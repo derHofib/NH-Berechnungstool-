@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>NH-Kurzschlussstromrechner</title>
+<style>
+/* ============================================================
+   NH-Kurzschlussstromrechner — Stylesheet
+   ============================================================ */
+:root{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#101418; --ink-soft:#3c454d;
+  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff;
+  --ok-bg:#d6f3dc; --ok-ink:#0d5c22; --ok-line:#1e9a41;
+  --bad-bg:#fbdada; --bad-ink:#7a0e0e; --bad-line:#c62828;
+  --na-bg:#e8e8e8; --na-ink:#444; --na-line:#999;
+  --warn-bg:#fff2cc; --warn-ink:#7a5b00; --warn-line:#c99a00;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --sans: "Segoe UI", Arial, Helvetica, sans-serif;
+  --radius: 10px;
+  --tap: 44px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14181b; --panel:#1e2327; --ink:#f0f2f4; --ink-soft:#c3cad0;
+    --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f;
+    --ok-bg:#123a1c; --ok-ink:#8be09e; --ok-line:#1e9a41;
+    --bad-bg:#3d1414; --bad-ink:#ff9d9d; --bad-line:#c62828;
+    --na-bg:#2a2e31; --na-ink:#b7bcc0; --na-line:#666;
+    --warn-bg:#3a2f06; --warn-ink:#ffd876; --warn-line:#c99a00;
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--ink);
+  font-size:16px; line-height:1.4; padding-bottom:60px;
+}
+h1,h2,h3,h4{font-family:var(--sans); font-weight:700; margin:0 0 .5em 0;}
+h1{font-size:1.3rem;}
+h2{font-size:1.1rem; border-bottom:2px solid var(--line); padding-bottom:.3em;}
+h3{font-size:1rem;}
+button, select, input, textarea{font-family:inherit; font-size:1rem;}
+button{
+  min-height:var(--tap); min-width:var(--tap); padding:.5em 1em;
+  border-radius:var(--radius); border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); cursor:pointer; touch-action:manipulation;
+}
+button.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600;}
+button.danger{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+button:active{transform:translateY(1px);}
+input,select,textarea{
+  min-height:var(--tap); padding:.4em .6em; border-radius:8px; border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); width:100%;
+}
+label{display:block; font-size:.85rem; color:var(--ink-soft); margin-bottom:.2em; font-weight:600;}
+.field{margin-bottom:.7em;}
+.row{display:flex; flex-wrap:wrap; gap:.7em;}
+.row > .field{flex:1 1 160px;}
+header#topbar{
+  position:sticky; top:0; z-index:50; background:var(--accent); color:var(--accent-ink);
+  padding:.6em 1em; display:flex; justify-content:space-between; align-items:center; gap:.5em; flex-wrap:wrap;
+}
+header#topbar h1{margin:0; color:var(--accent-ink);}
+header#topbar .meta{font-size:.75rem; opacity:.9;}
+#app{max-width:1400px; margin:0 auto; padding:1em;}
+.grid2{display:grid; grid-template-columns:1fr; gap:1em;}
+@media(min-width:980px){ .grid2{grid-template-columns:1fr 1fr;} .grid2 > .span2{grid-column:1/-1;} }
+section.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:1em; margin-bottom:1em;
+}
+.card{border:1px solid var(--line); border-radius:var(--radius); padding:.8em; margin-bottom:.6em; background:var(--bg);}
+.card-head{display:flex; justify-content:space-between; align-items:center; gap:.5em; margin-bottom:.4em;}
+.tag{display:inline-block; padding:.15em .5em; border-radius:6px; font-size:.75rem; font-weight:700; border:1px solid var(--line);}
+.tag.ok{background:var(--ok-bg); color:var(--ok-ink); border-color:var(--ok-line);}
+.tag.bad{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+.tag.na{background:var(--na-bg); color:var(--na-ink); border-color:var(--na-line);}
+.tag.warn{background:var(--warn-bg); color:var(--warn-ink); border-color:var(--warn-line);}
+.ampel{border-radius:var(--radius); border:2px solid; padding:.7em; margin-bottom:.5em;}
+.ampel.ok{background:var(--ok-bg); color:var(--ok-ink); border-color:var(--ok-line);}
+.ampel.bad{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+.ampel.na{background:var(--na-bg); color:var(--na-ink); border-color:var(--na-line);}
+.ampel .titlerow{display:flex; justify-content:space-between; font-weight:700;}
+.kennzahl{display:inline-block; min-width:9em; margin:.3em .6em .3em 0;}
+.kennzahl .val{font-size:1.5rem; font-weight:800; display:block;}
+.kennzahl .lbl{font-size:.75rem; color:var(--ink-soft);}
+details.rechenweg{margin-top:.4em; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.4em .7em;}
+details.rechenweg summary{cursor:pointer; font-weight:600; min-height:var(--tap); display:flex; align-items:center;}
+details.rechenweg pre{white-space:pre-wrap; font-family:var(--mono); font-size:.82rem; margin:.5em 0 0 0;}
+.warnbox{background:var(--warn-bg); color:var(--warn-ink); border:1px solid var(--warn-line); border-radius:8px; padding:.6em .8em; margin-bottom:.5em; font-weight:600;}
+.hinweis{font-size:.8rem; color:var(--ink-soft); font-style:italic;}
+canvas#chart{width:100%; height:420px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); touch-action:pinch-zoom;}
+.modebar{display:flex; gap:.4em; flex-wrap:wrap; margin-bottom:.7em;}
+.modebar button.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+#legalOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1000;
+  display:flex; align-items:center; justify-content:center; padding:1em;
+}
+#legalOverlay .box{background:var(--panel); color:var(--ink); max-width:640px; border-radius:var(--radius); padding:1.4em; max-height:90vh; overflow:auto;}
+table{border-collapse:collapse; width:100%; font-size:.9rem;}
+table th, table td{border:1px solid var(--line); padding:.35em .5em; text-align:left;}
+table th{background:var(--bg);}
+#protoHead, #protoEingaben, #protoErgebnisse, #protoBewertung, #testResults{overflow-x:auto;}
+#protoHead table, #protoErgebnisse table, #testResults table{min-width:520px;}
+.small{font-size:.8rem;}
+.pill-btn{border-radius:999px;}
+.flexend{display:flex; justify-content:flex-end; gap:.5em;}
+#debugPanel{display:none;}
+#debugPanel.open{display:block;}
+textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
+.badge-src{font-size:.7rem; color:var(--ink-soft); display:block; margin-top:.15em;}
+.dragHandle{cursor:grab; user-select:none; font-size:1.3rem; padding:0 .3em;}
+.pv-only{display:none;}
+.ac-only{display:block;}
+footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem; color:var(--ink-soft);}
+
+/* Print stylesheet */
+@media print{
+  header#topbar, .no-print, #debugPanel, #legalOverlay{display:none !important;}
+  body{background:#fff; color:#000; padding:0;}
+  section.panel{border:1px solid #000; break-inside:avoid; box-shadow:none;}
+  .grid2{grid-template-columns:1fr !important;}
+  a{color:#000; text-decoration:none;}
+  @page{size:A4; margin:14mm;}
+  .ampel.ok{background:#fff !important; border:2px solid #000 !important;}
+  .ampel.bad{background:#eee !important; border:2px solid #000 !important; font-weight:700;}
+  .ampel.na{background:#fff !important; border:1px dashed #000 !important;}
+  canvas#chart{border:1px solid #000;}
+}
+</style>
+</head>
+<body>
+
+<div id="legalOverlay">
+  <div class="box">
+    <h2>Rechtlicher Hinweis</h2>
+    <p>Dieses Werkzeug dient <strong>ausschließlich der Unterstützung der Elektrofachkraft</strong>. Die
+    Verantwortung für die Auslegung, die Auswahl der Betriebsmittel und die Bewertung der Ergebnisse
+    verbleibt vollständig bei der ausführenden Elektrofachkraft.</p>
+    <p>Vor Verwendung sind alle hinterlegten Kennliniendaten, Toleranzbänder und Grenzwerte gegen die
+    aktuellen Herstellerunterlagen und die jeweils gültige Normfassung zu prüfen. Das Tool liefert
+    <strong>keine</strong> vorbefüllten Herstellerkennlinien.</p>
+    <p>Die Berechnung ersetzt keine Messung an der errichteten Anlage nach DIN VDE 0100-600.</p>
+    <p class="small">Datenstand Normfassungen (vom Anwender zu pflegen, siehe Einstellungen):
+      <span id="legalNormstand">nicht gepflegt</span></p>
+    <div class="flexend">
+      <button class="primary" id="btnAcceptLegal">Verstanden, Verantwortung akzeptiert</button>
+    </div>
+  </div>
+</div>
+
+<header id="topbar">
+  <h1>NH-Kurzschlussstromrechner</h1>
+  <div class="meta">Version <span id="verLabel"></span> · <button id="btnShowLegal" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Rechtliche Hinweise</button> <button id="btnDebugToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Debug/Tests</button></div>
+</header>
+
+<div id="app">
+
+<section class="panel" id="debugPanel">
+  <h2>Debug &amp; Testsuite</h2>
+  <p class="hinweis">Interne Testsuite des reinen Berechnungskerns (Abschnitt 9 des Lastenhefts). Kein DOM-Zugriff in den geprüften Funktionen.</p>
+  <button id="btnRunTests" class="primary">Tests ausführen</button>
+  <div id="testResults"></div>
+</section>
+
+<section class="panel">
+  <h2>1. Anlagen- und Auftragsdaten</h2>
+  <div class="row">
+    <div class="field"><label>Kunde</label><input id="f_kunde"></div>
+    <div class="field"><label>Anlage</label><input id="f_anlage"></div>
+    <div class="field"><label>Anlagenteil</label><input id="f_anlagenteil"></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Prüfer / Elektrofachkraft</label><input id="f_pruefer"></div>
+    <div class="field"><label>Datum</label><input id="f_datum" type="date"></div>
+    <div class="field"><label>Netzform</label>
+      <select id="f_netzform"><option>TN-S</option><option>TN-C-S</option><option>TT</option><option>IT</option></select>
+    </div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Firmenlogo (lokal, wird als Base64 gespeichert)</label><input type="file" id="f_logo" accept="image/*"></div>
+    <div class="field"><label>c-Faktor (Spannungstoleranz Netz)</label>
+      <select id="f_cmax"><option value="1.05">c_max = 1,05 (±6 % Toleranz)</option><option value="1.10">c_max = 1,10 (+10 % Toleranz)</option></select>
+    </div>
+  </div>
+</section>
+
+<div class="grid2">
+
+<section class="panel">
+  <h2>2. Netzeinspeisung</h2>
+  <div class="modebar" id="modeBar">
+    <button data-mode="A" class="active">A · Netzangabe (Ik&quot; am Übergabepunkt)</button>
+    <button data-mode="B">B · Transformator</button>
+    <button data-mode="C">C · Messung (ZS)</button>
+  </div>
+
+  <div id="modeA">
+    <div class="row">
+      <div class="field"><label>Ik" am Übergabepunkt [kA]</label><input id="a_ik3" type="number" step="0.01" value="20"></div>
+      <div class="field"><label>R/X-Verhältnis</label><input id="a_rx" type="number" step="0.01" value="0.1"></div>
+      <div class="field"><label>Un am Übergabepunkt [V]</label><input id="a_un" type="number" step="1" value="400"></div>
+    </div>
+  </div>
+
+  <div id="modeB" style="display:none;">
+    <h3>Vorgelagertes Netz</h3>
+    <div class="row">
+      <div class="field"><label>Sk"Q vorgelagert [MVA]</label><input id="b_skq" type="number" step="0.1" value="500"></div>
+      <div class="field"><label>R/X-Verhältnis Netz</label><input id="b_rxq" type="number" step="0.01" value="0.1"></div>
+      <div class="field"><label>Un Oberspannungsseite [V]</label><input id="b_unhv" type="number" step="1" value="20000"></div>
+    </div>
+    <h3>Transformator</h3>
+    <div class="row">
+      <div class="field"><label>SrT [kVA]</label><input id="b_srt" type="number" step="1" value="630"></div>
+      <div class="field"><label>ukr [%]</label><input id="b_ukr" type="number" step="0.1" value="4"></div>
+      <div class="field"><label>PkrT [kW]</label><input id="b_pkrt" type="number" step="0.1" value="6.5"></div>
+      <div class="field"><label>Un Unterspannungsseite [V]</label><input id="b_unlv" type="number" step="1" value="400"></div>
+    </div>
+  </div>
+
+  <div id="modeC" style="display:none;">
+    <div class="row">
+      <div class="field"><label>Gemessene Schleifenimpedanz ZS [Ω]</label><input id="c_zs" type="number" step="0.001" value="0.2"></div>
+      <div class="field"><label>R/X-Verhältnis (angenommen, editierbar)</label><input id="c_rx" type="number" step="0.01" value="0.3"></div>
+      <div class="field"><label>Un am Messpunkt [V]</label><input id="c_un" type="number" step="1" value="400"></div>
+    </div>
+    <p class="hinweis">Der gemessene Wert (z. B. Fluke 1664 FC) wird als Ausgangsimpedanz übernommen; die nachgelagerte Leitungsstrecke wird aufaddiert. R/X ist bei einer Schleifenmessung nicht getrennt bekannt und muss vom Anwender geschätzt/angepasst werden — <strong>gemessener</strong> Ausgangswert, kein Rechenwert.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>3. Leitungsstrecke (kaskadiert)</h2>
+  <div id="strecke"></div>
+  <button id="btnAddAbschnitt">+ Abschnitt hinzufügen</button>
+  <p class="hinweis">Jeder Knoten (Ende eines Abschnitts) wird vollständig bewertet: Ik3max, Ik2, Ik1min, ZS, ip.</p>
+</section>
+
+<section class="panel span2">
+  <h2>4. Sicherungsbibliothek &amp; Auswahl</h2>
+  <p class="hinweis">Kennliniendaten sind herstellerspezifisch und urheberrechtlich geschützt — es sind
+  <strong>keine</strong> Werksdaten vorbefüllt. Bitte eigene Datensätze anlegen oder als JSON importieren
+  (Struktur siehe Lastenheft Abschnitt 4.4).</p>
+  <div class="row">
+    <div class="field"><label>JSON-Import Sicherungsbibliothek</label><input type="file" id="fuseImportFile" accept="application/json"></div>
+    <div class="field"><label>&nbsp;</label><button id="btnExportFuses">Bibliothek exportieren (JSON)</button></div>
+    <div class="field"><label>&nbsp;</label><button id="btnNewFuseTemplate">Neuen Sicherungsdatensatz anlegen</button></div>
+  </div>
+  <div id="fuseEditorHost"></div>
+  <h3>Bibliothek (<span id="fuseCount">0</span> Datensätze)</h3>
+  <div id="fuseList"></div>
+
+  <h3>Zuordnung zu Knoten</h3>
+  <div class="row">
+    <div class="field"><label>Baugröße</label><select id="sel_baugroesse"></select></div>
+    <div class="field"><label>Betriebsklasse</label><select id="sel_klasse"></select></div>
+    <div class="field"><label>Bemessungsspannung Un [V]</label><select id="sel_un"></select></div>
+    <div class="field"><label>Bemessungsstrom In [A] (bzw. In M Ich / kVA bei gTr)</label><select id="sel_in"></select></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Zuordnung zu Knoten (Strecke)</label><select id="sel_node"></select></div>
+    <div class="field"><label>&nbsp;</label><button class="primary" id="btnAssignFuse">Sicherung diesem Knoten zuordnen</button></div>
+  </div>
+  <div id="fuseSelWarn"></div>
+</section>
+
+</div>
+
+<section class="panel">
+  <h2>5. Ergebnisse</h2>
+  <div id="ergebnisse"></div>
+</section>
+
+<section class="panel">
+  <h2>6. Zeit-Strom-Kennlinien-Diagramm</h2>
+  <div class="row">
+    <div class="field"><label>Knoten für Diagramm</label><select id="chartNode"></select></div>
+    <div class="field"><label>Vergleichsmodus (weitere Klassen aus Bibliothek gleichzeitig darstellen)</label>
+      <select id="chartCompare" multiple size="4"></select>
+    </div>
+  </div>
+  <canvas id="chart" width="1200" height="840"></canvas>
+  <p class="hinweis">Gestrichelte Linienabschnitte = Extrapolation außerhalb hinterlegter Stützstellen. Vertikale Marker: Ik1min / Ik3max. Horizontale Marker: 0,4 s / 5 s.</p>
+</section>
+
+<section class="panel no-print">
+  <h2>7. Protokoll &amp; Datenaustausch</h2>
+  <div class="row">
+    <div class="field"><button class="primary" id="btnPrint">Protokoll drucken / als PDF speichern</button></div>
+    <div class="field"><button id="btnExportCase">Berechnungsfall exportieren (JSON)</button></div>
+    <div class="field"><label>Berechnungsfall importieren</label><input type="file" id="caseImportFile" accept="application/json"></div>
+    <div class="field"><button class="danger" id="btnResetAll">Alles zurücksetzen</button></div>
+  </div>
+</section>
+
+<section class="panel" id="protokollDruck">
+  <h2>Prüfprotokoll</h2>
+  <div id="protoHead"></div>
+  <div id="protoEingaben"></div>
+  <div id="protoErgebnisse"></div>
+  <div id="protoBewertung"></div>
+  <div id="protoKennlinie"></div>
+  <p class="small">Berechnung ersetzt keine Messung an der errichteten Anlage nach DIN VDE 0100-600.</p>
+  <p class="small">Kennlinienquelle(n) / Datenstand: <span id="protoQuelle"></span></p>
+  <div class="row" style="margin-top:2em;">
+    <div class="field">_____________________________<br>Unterschrift Elektrofachkraft, Datum</div>
+  </div>
+  <p class="small" id="protoFooter"></p>
+</section>
+
+</div>
+
+<footer id="appfooter">
+  NH-Kurzschlussstromrechner · Programmversion <span id="verLabel2"></span> ·
+  Änderungshistorie siehe „Debug/Tests“-Panel · Alle Formeln normativ referenziert (siehe Quellcode-Kommentare).
+</footer>
+
+<script>
+/* ============================================================================================
+   NH-KURZSCHLUSSSTROMRECHNER
+   Berechnungskern (reine, DOM-freie Funktionen) + UI-Schicht.
+   Normverweise stehen jeweils direkt bei Formel/Grenzwert als Kommentar.
+   ============================================================================================ */
+"use strict";
+
+const APP_VERSION = "1.0.0";
+const CHANGELOG = [
+  { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." }
+];
+
+/* =========================================================================
+   1. DATENMODELL / NORMKONSTANTEN
+   ========================================================================= */
+
+// Spannungsfaktoren c nach DIN EN 60909-0 (VDE 0102), Tabelle für Niederspannung.
+const NORM = {
+  c_min: 0.95,                 // DIN EN 60909-0, Tab. 1 (Niederspannung, für Ik_min)
+  rho_cu_20: 0.01786,          // Ω·mm²/m bei 20°C, spezifischer Widerstand Kupfer, DIN EN 60909-0
+  rho_al_20: 0.02857,          // Ω·mm²/m bei 20°C, spezifischer Widerstand Aluminium, DIN EN 60909-0
+  x_strich_kabel: 0.08,        // Ω/km, Vorgabewert Reaktanzbelag Kabel (editierbar), DIN EN 60909-4 Anhaltswert
+  alpha_temp: 0.004,           // 1/K, Temperaturkoeffizient Widerstand (Cu u. Al näherungsweise gleich), DIN EN 60909-0
+  theta_end_pvc: 80,           // °C, Leiterendtemperatur PVC-isolierte Leitungen im Kurzschlussfall (editierbar), DIN VDE 0276-1000 / Herstellerangabe
+  theta_end_vpe: 90,           // °C, Leiterendtemperatur VPE/XLPE-isolierte Leitungen (editierbar)
+  // k-Werte nach DIN VDE 0100-430, Tabelle (Adiabatengleichung), editierbar:
+  k_werte: { "Cu/PVC": 115, "Cu/VPE": 143, "Al/PVC": 76, "Al/VPE": 94 },
+  // Zulässige Abschaltzeiten nach DIN VDE 0100-410, Tab. 41.1 (TN-System, U0=230V).
+  // TT/IT-Werte sind normativ komplexer (u.a. abhängig von RCD-Einsatz) und hier nur als editierbare
+  // Vorgabe hinterlegt -- vom Anwender gegen die aktuell gültige Normausgabe zu bestätigen.
+  abschaltzeiten: {
+    "TN-S":   { endstromkreis_s: 0.4, verteilung_s: 5,   quelle: "DIN VDE 0100-410 Tab. 41.1 (TN-System, U0=230V)" },
+    "TN-C-S": { endstromkreis_s: 0.4, verteilung_s: 5,   quelle: "DIN VDE 0100-410 Tab. 41.1 (TN-System, U0=230V)" },
+    "TT":     { endstromkreis_s: 0.2, verteilung_s: 1,   quelle: "DIN VDE 0100-410 Tab. 41.1 (TT-System) -- vom Anwender zu bestätigen, i.d.R. RCD-Schutz maßgeblich" },
+    "IT":     { endstromkreis_s: null, verteilung_s: null, quelle: "DIN VDE 0100-410 (IT-System, Doppelfehlerbedingung) -- vom Anwender fallbezogen einzupflegen" }
+  }
+};
+
+// Betriebsklassen-Verhaltensmatrix (Abschnitt 4.2 Lastenheft)
+const BETRIEBSKLASSEN = {
+  gG:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gG - Allgemeine Anwendung / Leitungsschutz" },
+  gM:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A_M", label:"gM - Schaltgeräte-/Motorstromkreise (Doppelangabe In M Ich)" },
+  aM:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aM - Motorstromkreise, nur Kurzschlussschutz" },
+  gR:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gR - Halbleiterschutz (Ganzbereich)" },
+  aR:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aR - Halbleiter-Kurzschlussschutz (Backup)" },
+  gS:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gS - Kombinierter Halbleiter-/Leitungsschutz" },
+  gTr: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"kVA", label:"gTr - Transformatorschutz (Bemessung in kVA)" },
+  gB:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gB - Bergbauanlagen" },
+  gPV: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gPV - Photovoltaik (DC)", dc:true },
+  gN:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gN - Nordamerikanische Bemessungswerte" },
+  aN:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aN - Nordamerikanische Bemessungswerte (Teilbereich)" },
+  gD:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gD - Nordamerikanisch, time delay" }
+};
+
+// Baugrößen nach DIN 43620 -- reine Bezeichnungsliste. Numerische Grenzwerte (max. In, Icn je Un)
+// werden NICHT geschätzt, sondern kommen ausschließlich aus den vom Anwender importierten
+// Sicherungsdatensätzen (siehe Sicherungsbibliothek). Die Auswahllisten unten filtern daher
+// direkt über die tatsächlich vorhandenen Bibliotheksdaten (dynamische Einschränkung).
+const BAUGROESSEN = ["NH000","NH00","NH0","NH1","NH2","NH3","NH4","NH4a","NH1XL","NH2XL","NH3XL"];
+
+// Vorlage für einen Sicherungsdatensatz (Abschnitt 4.4 Lastenheft) -- alle Kennwerte sind vom
+// Anwender aus Herstellerunterlagen zu befüllen. Es sind KEINE Herstellerdaten vorbelegt.
+function neueSicherungsvorlage(){
+  return {
+    hersteller: "",
+    typbezeichnung: "",
+    baugroesse: "NH1",
+    klasse: "gG",
+    In_A: null,
+    Ich_A: null,     // nur gM
+    Sr_kVA: null,    // nur gTr
+    Un_V: 500,
+    stromart: "AC",  // "AC" | "DC" (DC zwingend bei gPV)
+    Icn_kA: null,
+    kennlinie: [
+      { t_s: 0.01, I_A: null },
+      { t_s: 0.1,  I_A: null },
+      { t_s: 0.2,  I_A: null },
+      { t_s: 0.4,  I_A: null },
+      { t_s: 1.0,  I_A: null },
+      { t_s: 5.0,  I_A: null },
+      { t_s: 10.0, I_A: null },
+      { t_s: 3600, I_A: null }
+    ],
+    schmelz_I2t_A2s: null,
+    gesamt_I2t_A2s: null,
+    durchlassstrom: [ { Ik_prosp_kA: null, Id_kA: null } ],
+    verlustleistung_W: null,
+    Inf_A: null,   // kleiner Prüfstrom, nur gG
+    If_A: null,    // großer Prüfstrom, nur gG (= "I2" in Bewertungslogik Abschnitt 6.3)
+    tk_konv_s: null, // konventionelle Zeit
+    quelle: "",
+    stand: ""
+  };
+}
+
+/* =========================================================================
+   2. BERECHNUNGSKERN — reine Funktionen, kein DOM-Zugriff
+   ========================================================================= */
+
+// ---- Netzeinspeisung Modus A: Ik" am Übergabepunkt bekannt -------------------------------
+// Z = c*Un / (sqrt(3)*Ik3"), danach Aufteilung über R/X. (DIN EN 60909-0)
+function modusA_impedanz({ Ik3_kA, RX, c, Un_V }){
+  const Ik3_A = Ik3_kA * 1000;
+  const Z = (c * Un_V) / (Math.sqrt(3) * Ik3_A);
+  const X = Z / Math.sqrt(1 + RX*RX);
+  const R = X * RX;
+  return { R, X, Z };
+}
+
+// ---- Netzeinspeisung Modus B: vorgelagertes Netz -----------------------------------------
+// Z_Q = c*U_nQ² / Sk"Q  (DIN EN 60909-0, Gl. für Netzeinspeisung), referenziert auf Unterspannungsseite
+// über das Quadrat des Übersetzungsverhältnisses.
+function netzQ_impedanz({ SkQ_MVA, RXq, c, Un_HV_V, Un_LV_V }){
+  const SkQ_VA = SkQ_MVA * 1e6;
+  const Zq_HV = (c * Un_HV_V*Un_HV_V) / SkQ_VA;
+  const uebersetzung2 = (Un_LV_V*Un_LV_V) / (Un_HV_V*Un_HV_V);
+  const Zq_LV = Zq_HV * uebersetzung2;
+  const Xq = Zq_LV / Math.sqrt(1+RXq*RXq);
+  const Rq = Xq * RXq;
+  return { R:Rq, X:Xq, Z:Zq_LV };
+}
+
+// ---- Transformator (DIN EN 60909-0) ------------------------------------------------------
+// Z_T = (ukr/100)*UrT²/SrT ; R_T = PkrT*UrT²/SrT² ; X_T = sqrt(Z_T² - R_T²)
+// Impedanzkorrekturfaktor K_T = 0,95*c_max/(1+0,6*x_T), x_T = X_T/(UrT²/SrT)
+function transformatorImpedanz({ SrT_kVA, ukr_pct, PkrT_kW, UrT_V, c_max }){
+  const SrT_VA = SrT_kVA*1000;
+  const PkrT_W = PkrT_kW*1000;
+  const ZT = (ukr_pct/100) * (UrT_V*UrT_V) / SrT_VA;
+  const RT = PkrT_W * (UrT_V*UrT_V) / (SrT_VA*SrT_VA);
+  const XT = Math.sqrt(Math.max(ZT*ZT - RT*RT, 0));
+  const ZrT = (UrT_V*UrT_V)/SrT_VA;
+  const xT = XT / ZrT;
+  const KT = (0.95*c_max)/(1+0.6*xT);
+  return { R:RT, X:XT, Z:ZT, KT, R_korr:RT*KT, X_korr:XT*KT };
+}
+
+// ---- Leitungsabschnitt --------------------------------------------------------------------
+// R_L20 = rho*l/(n*A) ; R_theta = R_L20*(1+alpha*(theta-20)) ; X_L = x'*l  (DIN EN 60909-0/-4)
+function leitungImpedanz({ l_m, A_mm2, material, n_parallel, theta_C, x_strich }){
+  const rho = material === "Al" ? NORM.rho_al_20 : NORM.rho_cu_20;
+  const n = Math.max(1, n_parallel||1);
+  const R20 = (rho * l_m) / (n * A_mm2);
+  const Rtheta = R20 * (1 + NORM.alpha_temp*(theta_C-20));
+  const X = (x_strich!=null?x_strich:NORM.x_strich_kabel) * (l_m/1000) / n;
+  return { R:Rtheta, X, R20 };
+}
+
+// ---- Kurzschlussarten (DIN EN 60909-0) -----------------------------------------------------
+function ik3_kA({ c, Un_V, R, X }){
+  const Z = Math.sqrt(R*R+X*X);
+  if(Z<=0) return Infinity;
+  return (c*Un_V)/(Math.sqrt(3)*Z)/1000;
+}
+function ik2_kA(ik3_kA_val){ return (Math.sqrt(3)/2)*ik3_kA_val; } // exakt 0,866...*Ik3
+function ik1_A({ c, U0_V, R_S, X_S }){
+  const Zs = Math.sqrt(R_S*R_S+X_S*X_S);
+  if(Zs<=0) return Infinity;
+  return (c*U0_V)/Zs;
+}
+
+// ---- Stoßkurzschlussstrom (DIN EN 60909-0) -------------------------------------------------
+function kappaFaktor(RX){ return 1.02 + 0.98*Math.exp(-3*RX); }
+function stosskurzschlussstrom_kA({ R, X, Ik3_kA_val }){
+  const RX = X>0 ? R/X : 0;
+  const kappa = kappaFaktor(RX);
+  const ip = kappa * Math.SQRT2 * Ik3_kA_val;
+  return { kappa, ip_kA: ip };
+}
+
+/* ---- Berechnung der gesamten kaskadierten Strecke ----------------------------------------
+   netz: { modus:'A'|'B'|'C', ...params }
+   abschnitte: [{ name, l_m, A_L, A_N, A_PE, material, verlegeart, n_parallel, x_strich, isoliert:'PVC'|'VPE', fuse:null }]
+   Gibt Array von Knotenergebnissen zurück (Knoten 0 = Einspeisepunkt / Trafo-Sammelschiene). */
+function berechneStrecke(input){
+  const { netz, abschnitte, c_max, netzform } = input;
+  const cmin = NORM.c_min;
+  const U0 = (netz.Un_V ?? 400) / Math.sqrt(3);
+
+  // Quellimpedanz (Netz +ggf. Transformator), gilt konstant für alle nachgelagerten Knoten,
+  // temperaturunabhängig (Quellimpedanz wird nicht mit Leitertemperatur korrigiert).
+  let Rq=0, Xq=0, KT=1, transformatorInfo=null, netzInfo=null;
+  if(netz.modus === "A"){
+    const z = modusA_impedanz({ Ik3_kA:netz.Ik3_kA, RX:netz.RX, c:c_max, Un_V:netz.Un_V });
+    Rq=z.R; Xq=z.X; netzInfo = z;
+  } else if(netz.modus === "B"){
+    const zq = netzQ_impedanz({ SkQ_MVA:netz.SkQ_MVA, RXq:netz.RXq, c:c_max, Un_HV_V:netz.Un_HV_V, Un_LV_V:netz.Un_LV_V });
+    const zt = transformatorImpedanz({ SrT_kVA:netz.SrT_kVA, ukr_pct:netz.ukr_pct, PkrT_kW:netz.PkrT_kW, UrT_V:netz.Un_LV_V, c_max });
+    Rq = zq.R + zt.R_korr; Xq = zq.X + zt.X_korr; KT = zt.KT;
+    netzInfo = zq; transformatorInfo = zt;
+  } else if(netz.modus === "C"){
+    const RX = netz.RX_gemessen;
+    const X = netz.ZS_gemessen_Ohm / Math.sqrt(1+RX*RX);
+    const R = X*RX;
+    Rq=R; Xq=X; netzInfo = { R, X, Z:netz.ZS_gemessen_Ohm, gemessen:true };
+  }
+
+  const knoten = [];
+  // Knoten 0: Einspeisepunkt / Sammelschiene (keine Leitung, keine PE-Reduktion)
+  let R1max=Rq, X1max=Xq;      // 20°C-Phasenimpedanz, kumuliert
+  let R1min=Rq, X1min=Xq;      // Betriebstemperatur-Phasenimpedanz (bei Knoten 0 = Quelle, keine Temp-Korrektur)
+  let RPEmin=0, XPEmin=0;      // PE-Impedanz (nur Leitungen, Quelle hat keinen PE-Beitrag)
+
+  function knotenErgebnis(name, R1max,X1max,R1min,X1min,RPEmin,XPEmin, abschnittMeta){
+    const Ik3max = ik3_kA({ c:c_max, Un_V:netz.Un_V, R:R1max, X:X1max });
+    const Ik2 = ik2_kA(Ik3max);
+    const RS_min = R1min+RPEmin, XS_min = X1min+XPEmin;
+    const Ik1min = ik1_A({ c:cmin, U0_V:U0, R_S:RS_min, X_S:XS_min });
+    const stoss = stosskurzschlussstrom_kA({ R:R1max, X:X1max, Ik3_kA_val:Ik3max });
+    return {
+      name, R1max, X1max, R1min, X1min, RPEmin, XPEmin, RS_min, XS_min,
+      Ik3max_kA: Ik3max, Ik2_kA: Ik2, Ik1min_A: Ik1min, ZS_min_Ohm: Math.sqrt(RS_min*RS_min+XS_min*XS_min),
+      kappa: stoss.kappa, ip_kA: stoss.ip_kA,
+      abschnitt: abschnittMeta || null, fuse: null
+    };
+  }
+
+  knoten.push(knotenErgebnis("Einspeisung"+(transformatorInfo?" (Trafo-Sammelschiene)":""), R1max,X1max,R1min,X1min,RPEmin,XPEmin, { netzInfo, transformatorInfo }));
+
+  for(const ab of abschnitte){
+    const theta_end = ab.isoliert === "VPE" ? NORM.theta_end_vpe : NORM.theta_end_pvc;
+    const lPhase = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_L, material:ab.material, n_parallel:ab.n_parallel, theta_C:20, x_strich:ab.x_strich });
+    const lPhaseHot = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_L, material:ab.material, n_parallel:ab.n_parallel, theta_C:theta_end, x_strich:ab.x_strich });
+    const lPE_hot = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_PE, material:ab.material, n_parallel:ab.n_parallel, theta_C:theta_end, x_strich:ab.x_strich });
+
+    R1max += lPhase.R;  X1max += lPhase.X;
+    R1min += lPhaseHot.R; X1min += lPhaseHot.X;
+    RPEmin += lPE_hot.R; XPEmin += lPE_hot.X;
+
+    knoten.push(knotenErgebnis(ab.name || ("Abschnitt "+knoten.length), R1max,X1max,R1min,X1min,RPEmin,XPEmin, { ab, theta_end }));
+  }
+
+  return { knoten, quell:{Rq,Xq,KT,netzInfo,transformatorInfo} };
+}
+
+/* =========================================================================
+   2b. GLEICHSTROMZWEIG (gPV) — DIN EN 60269-6
+   Reiner Widerstandszweig: keine Reaktanzen, kein kappa, kein Ik2/Ik3.
+   ========================================================================= */
+function pvKurzschlussstrom({ Isc_A, n_strings, temp_koeff_pct_per_K, T_zelle_C }){
+  const dT = (T_zelle_C - 25);
+  const Isc_korr = Isc_A * (1 + (temp_koeff_pct_per_K/100)*dT);
+  return { Isc_korr_A: Isc_korr, Ik_dc_A: Isc_korr * n_strings };
+}
+
+/* =========================================================================
+   3. ZEIT-STROM-KENNLINIE: doppelt-logarithmische Interpolation/Extrapolation
+   ========================================================================= */
+// Log-log-lineare Interpolation/Extrapolation zwischen zwei Stützstellen für eine beliebige
+// Zielkoordinate auf der x-Achse; liefert den zugehörigen y-Wert.
+function loglogWert(x0,y0,x1,y1,x){
+  const lx0=Math.log10(x0), lx1=Math.log10(x1), lx=Math.log10(x);
+  const ly0=Math.log10(y0), ly1=Math.log10(y1);
+  if(lx1===lx0) return y0;
+  const ly = ly0 + (ly1-ly0)*(lx-lx0)/(lx1-lx0);
+  return Math.pow(10,ly);
+}
+
+function gueltigePunkte(kennlinie){
+  return kennlinie.filter(p=>p && p.t_s!=null && p.I_A!=null && isFinite(p.t_s) && isFinite(p.I_A))
+                  .slice().sort((a,b)=>a.t_s-b.t_s);
+}
+
+// Findet die Zeit t für einen gegebenen Strom I (für Bestimmung der Abschaltzeit ta bei Ik1min).
+// Strom fällt mit steigender Zeit monoton -> Suche über I-Wertebereich.
+function findeZeitFuerStrom(kennlinie, I_A){
+  const pts = gueltigePunkte(kennlinie);
+  if(pts.length<2) return { error:"Zu wenige gültige Kennlinienpunkte hinterlegt." };
+  // sortiert nach t aufsteigend => I i.d.R. absteigend
+  if(I_A >= pts[0].I_A){
+    // größerer Strom als größter Stützpunkt -> Extrapolation zu kürzeren Zeiten
+    const t = loglogWert(pts[0].I_A, pts[0].t_s, pts[1].I_A, pts[1].t_s, I_A);
+    return { t_s:t, extrapolated:true };
+  }
+  if(I_A <= pts[pts.length-1].I_A){
+    const a=pts[pts.length-2], b=pts[pts.length-1];
+    const t = loglogWert(a.I_A,a.t_s,b.I_A,b.t_s,I_A);
+    return { t_s:t, extrapolated:true };
+  }
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const hi = Math.max(a.I_A,b.I_A), lo=Math.min(a.I_A,b.I_A);
+    if(I_A<=hi && I_A>=lo){
+      const t = loglogWert(a.I_A,a.t_s,b.I_A,b.t_s,I_A);
+      return { t_s:t, extrapolated:false };
+    }
+  }
+  return { error:"Interpolation fehlgeschlagen (unerwartete Kennlinienform)." };
+}
+
+// Findet den Strom I für eine gegebene Zeit t (für Ia bei geforderter Abschaltzeit, z.B. 0,4s/5s).
+function findeStromFuerZeit(kennlinie, t_s){
+  const pts = gueltigePunkte(kennlinie);
+  if(pts.length<2) return { error:"Zu wenige gültige Kennlinienpunkte hinterlegt." };
+  if(t_s <= pts[0].t_s){
+    const I = loglogWert(pts[0].t_s,pts[0].I_A,pts[1].t_s,pts[1].I_A,t_s);
+    return { I_A:I, extrapolated: t_s<pts[0].t_s };
+  }
+  if(t_s >= pts[pts.length-1].t_s){
+    const a=pts[pts.length-2], b=pts[pts.length-1];
+    const I = loglogWert(a.t_s,a.I_A,b.t_s,b.I_A,t_s);
+    return { I_A:I, extrapolated: t_s>pts[pts.length-1].t_s };
+  }
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    if(t_s>=a.t_s && t_s<=b.t_s){
+      const I = loglogWert(a.t_s,a.I_A,b.t_s,b.I_A,t_s);
+      return { I_A:I, extrapolated:false };
+    }
+  }
+  return { error:"Interpolation fehlgeschlagen (unerwartete Kennlinienform)." };
+}
+
+// Interpolation des begrenzten Durchlassstroms Id aus prospektivem Ik (linear, da Herstellerangabe i.d.R. linear/linear geplottet)
+function findeDurchlassstrom(durchlassstrom, Ik_prosp_kA){
+  const pts = (durchlassstrom||[]).filter(p=>p&&p.Ik_prosp_kA!=null&&p.Id_kA!=null).sort((a,b)=>a.Ik_prosp_kA-b.Ik_prosp_kA);
+  if(pts.length<2) return { error:"Keine Begrenzungskennlinie (Durchlassstrom) hinterlegt." };
+  if(Ik_prosp_kA<=pts[0].Ik_prosp_kA) return { Id_kA:pts[0].Id_kA, extrapolated:Ik_prosp_kA<pts[0].Ik_prosp_kA };
+  if(Ik_prosp_kA>=pts[pts.length-1].Ik_prosp_kA){
+    const a=pts[pts.length-2], b=pts[pts.length-1];
+    const Id = a.Id_kA + (b.Id_kA-a.Id_kA)*(Ik_prosp_kA-a.Ik_prosp_kA)/(b.Ik_prosp_kA-a.Ik_prosp_kA);
+    return { Id_kA:Id, extrapolated:true };
+  }
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    if(Ik_prosp_kA>=a.Ik_prosp_kA && Ik_prosp_kA<=b.Ik_prosp_kA){
+      const Id = a.Id_kA + (b.Id_kA-a.Id_kA)*(Ik_prosp_kA-a.Ik_prosp_kA)/(b.Ik_prosp_kA-a.Ik_prosp_kA);
+      return { Id_kA:Id, extrapolated:false };
+    }
+  }
+  return { error:"Interpolation fehlgeschlagen." };
+}
+
+/* =========================================================================
+   4. THERMISCHE BEANSPRUCHUNG (DIN VDE 0100-430)
+   ========================================================================= */
+// ta > 0,1s: Adiabatengleichung t_zul=(k*S/Ik)^2, PASS wenn t_zul >= ta (Leiter hält bis Abschaltung durch)
+// ta <=0,1s: Adiabatengleichung ungültig -> Vergleich Durchlassintegrale: I2t_fuse <= (k*S)^2
+function thermischeBeanspruchung({ ta_s, Ik_A, k, S_mm2, gesamt_I2t_A2s }){
+  if(ta_s == null || !isFinite(ta_s)){
+    return { anwendbar:false, grund:"Abschaltzeit nicht ermittelbar." };
+  }
+  if(ta_s > 0.1){
+    const t_zul = Math.pow((k*S_mm2)/Ik_A, 2);
+    return { anwendbar:true, methode:"Adiabatengleichung (ta > 0,1 s)", t_zul_s:t_zul, ta_s, bestanden: t_zul >= ta_s };
+  } else {
+    if(gesamt_I2t_A2s==null) return { anwendbar:false, grund:"ta <= 0,1 s: Durchlassintegral (Gesamt-I²t) der Sicherung nicht hinterlegt." };
+    const grenz = Math.pow(k*S_mm2,2);
+    return { anwendbar:true, methode:"Durchlassintegral-Vergleich (ta <= 0,1 s, Adiabatengleichung ungültig)", grenz_A2s:grenz, ist_A2s:gesamt_I2t_A2s, bestanden: gesamt_I2t_A2s <= grenz };
+  }
+}
+
+/* =========================================================================
+   5. BEWERTUNGSLOGIK (Abschnitt 6 Lastenheft)
+   ========================================================================= */
+function bewerteKnoten({ knotenErg, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }){
+  const ergebnisse = {};
+
+  // 1. Abschaltbedingung
+  if(fuse && geforderteZeit_s!=null){
+    const iaRes = findeStromFuerZeit(fuse.kennlinie, geforderteZeit_s);
+    if(iaRes.error){
+      ergebnisse.abschaltbedingung = { status:"na", text:iaRes.error };
+    } else {
+      const Ia = iaRes.I_A;
+      const bestanden = knotenErg.Ik1min_A >= Ia;
+      ergebnisse.abschaltbedingung = {
+        status: bestanden?"ok":"bad",
+        Ia_A: Ia, Ik1min_A: knotenErg.Ik1min_A,
+        sicherheitsfaktor: Ia>0? knotenErg.Ik1min_A/Ia : null,
+        extrapoliert: iaRes.extrapolated,
+        text: `Erforderlicher Abschaltstrom Ia (${geforderteZeit_s} s) = ${Ia.toFixed(1)} A; vorhandener Ik1min = ${knotenErg.Ik1min_A.toFixed(1)} A.`
+      };
+    }
+  } else {
+    ergebnisse.abschaltbedingung = { status:"na", text:"Keine Sicherung / keine geforderte Abschaltzeit zugeordnet." };
+  }
+
+  // 2. Ausschaltvermögen
+  if(fuse && fuse.Icn_kA!=null){
+    const bestanden = knotenErg.Ik3max_kA <= fuse.Icn_kA;
+    ergebnisse.ausschaltvermoegen = {
+      status: bestanden?"ok":"bad",
+      Icn_kA: fuse.Icn_kA, Ik3max_kA: knotenErg.Ik3max_kA,
+      text: `Ik3max = ${knotenErg.Ik3max_kA.toFixed(2)} kA <=? Icn = ${fuse.Icn_kA} kA`
+    };
+  } else {
+    ergebnisse.ausschaltvermoegen = { status:"na", text:"Icn der Sicherung nicht hinterlegt." };
+  }
+
+  // 3. Überlastschutz der Leitung
+  const klasseInfo = fuse ? BETRIEBSKLASSEN[fuse.klasse] : null;
+  if(!fuse){
+    ergebnisse.ueberlastschutz = { status:"na", text:"Keine Sicherung zugeordnet." };
+  } else if(klasseInfo && klasseInfo.ueberlastschutz === false){
+    ergebnisse.ueberlastschutz = { status:"na", warnung:true, text:"nicht anwendbar - Überlastschutz nicht gegeben (Klasse "+fuse.klasse+"). Separates Überlastschutzorgan (z. B. Motorschutzrelais) erforderlich!" };
+  } else if(Iz_A==null){
+    ergebnisse.ueberlastschutz = { status:"na", text:"Belastbarkeit Iz der Leitung nicht angegeben." };
+  } else if(fuse.If_A==null){
+    ergebnisse.ueberlastschutz = { status:"na", text:"Großer Prüfstrom If der Sicherung nicht hinterlegt (nur für gG vorgesehen)." };
+  } else {
+    const In = fuse.In_A;
+    const b1 = Iz_A >= In;
+    const b2 = fuse.If_A <= 1.45*Iz_A;
+    ergebnisse.ueberlastschutz = {
+      status: (b1&&b2)?"ok":"bad",
+      Iz_A, In_A:In, If_A:fuse.If_A,
+      text: `Iz(${Iz_A} A) >= In(${In} A): ${b1?"ja":"nein"}; If(${fuse.If_A} A) <= 1,45*Iz(${(1.45*Iz_A).toFixed(1)} A): ${b2?"ja":"nein"}`
+    };
+  }
+
+  // 4. Thermische Kurzschlussfestigkeit
+  if(!fuse){
+    ergebnisse.thermisch = { status:"na", text:"Keine Sicherung zugeordnet." };
+  } else {
+    const taRes = findeZeitFuerStrom(fuse.kennlinie, knotenErg.Ik1min_A);
+    if(taRes.error){
+      ergebnisse.thermisch = { status:"na", text:taRes.error };
+    } else {
+      const matKey = (material==="Al"?"Al":"Cu") + "/" + (isoliert==="VPE"?"VPE":"PVC");
+      const k = NORM.k_werte[matKey];
+      const th = thermischeBeanspruchung({ ta_s:taRes.t_s, Ik_A:knotenErg.Ik1min_A, k, S_mm2:A_L, gesamt_I2t_A2s: fuse.gesamt_I2t_A2s });
+      ergebnisse.thermisch = th.anwendbar
+        ? { status: th.bestanden?"ok":"bad", ...th, extrapoliert: taRes.extrapolated, k_wert:k, matKey }
+        : { status:"na", text: th.grund };
+    }
+  }
+
+  // 5. Selektivität
+  if(!fuse || !vorgelagerteFuse){
+    ergebnisse.selektivitaet = { status:"na", text:"Keine vorgelagerte Sicherung für Selektivitätsprüfung hinterlegt." };
+  } else if(fuse.klasse !== vorgelagerteFuse.klasse){
+    ergebnisse.selektivitaet = { status:"na", warnung:true, text:"Unterschiedliche Betriebsklassen - Faustregel nicht anwendbar. Einzelnachweis der Selektivität erforderlich." };
+  } else if(fuse.gesamt_I2t_A2s!=null && vorgelagerteFuse.schmelz_I2t_A2s!=null){
+    const bestanden = fuse.gesamt_I2t_A2s < vorgelagerteFuse.schmelz_I2t_A2s;
+    ergebnisse.selektivitaet = { status:bestanden?"ok":"bad", methode:"exakt (I²t-Vergleich)",
+      text:`Gesamt-I²t nachgelagert (${fuse.gesamt_I2t_A2s} A²s) <? Schmelz-I²t vorgelagert (${vorgelagerteFuse.schmelz_I2t_A2s} A²s)` };
+  } else if(fuse.klasse==="gG" && vorgelagerteFuse.klasse==="gG" && fuse.In_A && vorgelagerteFuse.In_A){
+    const verh = vorgelagerteFuse.In_A/fuse.In_A;
+    ergebnisse.selektivitaet = { status: verh>=1.6?"ok":"bad", methode:"Faustregel gG/gG (Stufung 1:1,6, Vorprüfung)", verhaeltnis:verh,
+      text:`Stufung ${vorgelagerteFuse.In_A}/${fuse.In_A} = ${verh.toFixed(2)} >= 1,6 ? -- Faustregel, kein Ersatz für Einzelnachweis.` };
+  } else {
+    ergebnisse.selektivitaet = { status:"na", text:"Für exakten Nachweis fehlen I²t-Werte; Faustregel nur für gG/gG anwendbar." };
+  }
+
+  // 6. Dynamische Beanspruchung
+  const dynErg = {};
+  if(stossstromfestigkeit_kA!=null){
+    dynErg.ip_pruefung = { status: knotenErg.ip_kA<=stossstromfestigkeit_kA?"ok":"bad",
+      text:`ip = ${knotenErg.ip_kA.toFixed(2)} kA <=? Bemessungs-Stoßstromfestigkeit ${stossstromfestigkeit_kA} kA` };
+  } else {
+    dynErg.ip_pruefung = { status:"na", text:"Bemessungs-Stoßstromfestigkeit der Verteilung nicht angegeben." };
+  }
+  if(fuse && fuse.durchlassstrom && fuse.durchlassstrom.some(p=>p&&p.Ik_prosp_kA!=null)){
+    const idRes = findeDurchlassstrom(fuse.durchlassstrom, knotenErg.Ik3max_kA);
+    dynErg.durchlassstrom = idRes.error ? { status:"na", text:idRes.error } : { status:"ok", Id_kA:idRes.Id_kA, extrapoliert:idRes.extrapolated, text:`Begrenzter Durchlassstrom Id ≈ ${idRes.Id_kA.toFixed(2)} kA bei Ik3max=${knotenErg.Ik3max_kA.toFixed(2)} kA` };
+  } else {
+    dynErg.durchlassstrom = { status:"na", text:"Keine Begrenzungskennlinie (Durchlassstrom) hinterlegt." };
+  }
+  ergebnisse.dynamisch = dynErg;
+
+  return ergebnisse;
+}
+
+/* =========================================================================
+   6. WARNUNGEN je Betriebsklasse (Abschnitt 6, "Zwingende Warnungen")
+   ========================================================================= */
+function klassenWarnungen(fuse){
+  if(!fuse) return [];
+  const w = [];
+  const k = fuse.klasse;
+  if(k==="aM"||k==="aR"||k==="aN") w.push("Klasse "+k+": KEIN Überlastschutz durch diese Sicherung gegeben - separates Überlastschutzorgan erforderlich.");
+  if(k==="aR"||k==="gR") w.push("Klasse "+k+": Leitungsschutz nicht bzw. nur eingeschränkt gegeben (Halbleiterschutz-Kennlinie).");
+  if(k==="gTr") w.push("Klasse gTr: Bemessung erfolgt in kVA, nicht in Ampere.");
+  if(k==="gPV") w.push("Klasse gPV: ausschließlich DC-Betrieb - AC-Berechnung ist für diesen Knoten gesperrt.");
+  if(k==="gM") w.push("Klasse gM: Doppelbemessung - Baugröße/Ausschaltvermögen nach Ich, Leitungsschutzbewertung nach In.");
+  return w;
+}
+
+/* =========================================================================
+   7. TESTSUITE (Abschnitt 9 Lastenheft)
+   ========================================================================= */
+function runTestSuite(){
+  const results = [];
+  function assertClose(name, actual, expected, tol, info){
+    const pass = Math.abs(actual-expected) <= tol;
+    results.push({ name, pass, actual, expected, info: info||"" });
+  }
+  function assertTrue(name, cond, info){ results.push({ name, pass: !!cond, info: info||"" }); }
+
+  // Test 1: Trafo 630 kVA, ukr=4%, Plausibilität Ik3 an den Klemmen (ohne Netzvorimpedanz, nur Trafo)
+  {
+    const zt = transformatorImpedanz({ SrT_kVA:630, ukr_pct:4, PkrT_kW:6.5, UrT_V:400, c_max:1.1 });
+    // Handrechnung Näherung: Ik3'' ≈ c*Un / (sqrt(3)*Z_T_korr)
+    const ik3 = ik3_kA({ c:1.1, Un_V:400, R:zt.R_korr, X:zt.X_korr });
+    // Erwartungsbereich Plausibilität: Trafo 630kVA/400V/4% liefert typischerweise ca. 18-24 kA am Klemmenpunkt
+    assertTrue("Trafo 630kVA ukr=4%: Ik3-Plausibilität (10-30 kA)", ik3>10 && ik3<30, "Ik3 = "+ik3.toFixed(2)+" kA");
+  }
+
+  // Test 2: Ik2 = 0,866*Ik3 exakt
+  {
+    const ik3 = 20.0;
+    const ik2 = ik2_kA(ik3);
+    assertClose("Ik2 = sqrt(3)/2 * Ik3", ik2, (Math.sqrt(3)/2)*ik3, 1e-9);
+  }
+
+  // Test 3: Temperaturkorrektur R(80°C) = 1,24 * R(20°C) für Kupfer
+  {
+    const r20 = leitungImpedanz({ l_m:100, A_mm2:10, material:"Cu", n_parallel:1, theta_C:20, x_strich:0.08 });
+    const r80 = leitungImpedanz({ l_m:100, A_mm2:10, material:"Cu", n_parallel:1, theta_C:80, x_strich:0.08 });
+    assertClose("R(80°C) = 1,24 * R(20°C), Cu", r80.R, 1.24*r20.R, 1e-6);
+  }
+
+  // Test 4: Ik1min sinkt, wenn PE-Querschnitt gegenüber L reduziert wird
+  {
+    const strecke1 = berechneStrecke({
+      netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S",
+      abschnitte:[{ name:"K1", l_m:50, A_L:10, A_N:10, A_PE:10, material:"Cu", n_parallel:1, x_strich:0.08, isoliert:"PVC" }]
+    });
+    const streckeReduziert = berechneStrecke({
+      netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S",
+      abschnitte:[{ name:"K1", l_m:50, A_L:10, A_N:10, A_PE:6, material:"Cu", n_parallel:1, x_strich:0.08, isoliert:"PVC" }]
+    });
+    const ik1_gleich = strecke1.knoten[1].Ik1min_A;
+    const ik1_reduziert = streckeReduziert.knoten[1].Ik1min_A;
+    assertTrue("Ik1min sinkt bei reduziertem PE-Querschnitt", ik1_reduziert < ik1_gleich, `Ik1min(PE=10)=${ik1_gleich.toFixed(1)}A, Ik1min(PE=6)=${ik1_reduziert.toFixed(1)}A`);
+  }
+
+  // Test 5: aM liefert Überlastprüfung "nicht anwendbar" statt "bestanden"
+  {
+    const fuse = Object.assign(neueSicherungsvorlage(), { klasse:"aM", In_A:100, If_A:160, Icn_kA:120 });
+    const strecke = berechneStrecke({ netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S", abschnitte:[] });
+    const bew = bewerteKnoten({ knotenErg:strecke.knoten[0], fuse, material:"Cu", A_L:35, isoliert:"PVC", Iz_A:120, geforderteZeit_s:0.4 });
+    assertTrue("aM: Überlastschutz = 'nicht anwendbar'", bew.ueberlastschutz.status==="na" && bew.ueberlastschutz.warnung===true, JSON.stringify(bew.ueberlastschutz));
+  }
+
+  // Test 6: gTr kVA -> Bemessungsstrom korrekt umgerechnet (In = S/(sqrt(3)*Un))
+  {
+    const S_VA = 630000, Un = 400;
+    const In = S_VA/(Math.sqrt(3)*Un);
+    assertClose("gTr: In = S/(sqrt(3)*Un) für 630kVA/400V", In, 909.33, 1);
+  }
+
+  // Test 7: doppelt-logarithmische Interpolation liefert bei bekannter Gerade im log-log-Raum exakten Wert
+  {
+    // Gerade im log-log-Raum: log(t) = -2*log(I) + const  =>  t = C / I^2
+    const C = 1e6;
+    const kennlinie = [ {t_s:10, I_A: Math.sqrt(C/10)}, {t_s:1000, I_A: Math.sqrt(C/1000)} ];
+    const I_test = Math.sqrt(C/100); // erwartete t=100 exakt auf der Geraden
+    const res = findeZeitFuerStrom(kennlinie, I_test);
+    assertClose("Log-log-Interpolation exakt auf bekannter Geraden", res.t_s, 100, 1e-6);
+  }
+
+  // Test 8: Netz Modus A liefert konsistentes Ik3 (Rückrechnung)
+  {
+    const z = modusA_impedanz({ Ik3_kA:25, RX:0.1, c:1.1, Un_V:400 });
+    const ik3_check = ik3_kA({ c:1.1, Un_V:400, R:z.R, X:z.X });
+    assertClose("Modus A: Rückrechnung Ik3 konsistent", ik3_check, 25, 1e-6);
+  }
+
+  // Test 9: kappa-Faktor Grenzwerte plausibel (R/X->0 => kappa->2.0; R/X gross => kappa->1.02)
+  {
+    assertClose("kappa(R/X=0) = 2,00", kappaFaktor(0), 2.0, 1e-6);
+    assertTrue("kappa(R/X gross) naehert sich 1,02", kappaFaktor(50)<1.03, "kappa="+kappaFaktor(50));
+  }
+
+  return results;
+}
+
+/* =========================================================================
+   8. UI-SCHICHT (DOM)
+   ========================================================================= */
+let STATE = {
+  header: {}, netzModus:"A", netz:{}, abschnitte:[], fuseLibrary:[], nodeAssignments:{}, // nodeIndex -> fuse-id
+  nodeParams:{}, // nodeIndex -> {Iz_A, geforderteZeit_s, material, isoliert, stossstromfestigkeit_kA}
+  logoBase64:null
+};
+let TESTOUT = null;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem("nhrechner_state_v1");
+    if(raw){ const parsed = JSON.parse(raw); Object.assign(STATE, parsed); }
+  }catch(e){ console.warn("State konnte nicht geladen werden", e); }
+}
+function saveState(){
+  try{ localStorage.setItem("nhrechner_state_v1", JSON.stringify(STATE)); }catch(e){}
+}
+
+function el(tag, attrs, children){
+  const e = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    if(k==="text") e.textContent = attrs[k];
+    else if(k==="html") e.innerHTML = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  if(children) children.forEach(c=>c && e.appendChild(c));
+  return e;
+}
+function fmt(n, digits=2){
+  if(n==null || !isFinite(n)) return "—";
+  return n.toLocaleString("de-DE", { minimumFractionDigits:digits, maximumFractionDigits:digits });
+}
+
+/* ---- Legal Overlay ---- */
+document.getElementById("btnAcceptLegal").addEventListener("click", ()=>{
+  document.getElementById("legalOverlay").style.display = "none";
+  localStorage.setItem("nhrechner_legal_ack", "1");
+});
+document.getElementById("btnShowLegal").addEventListener("click", ()=>{
+  document.getElementById("legalOverlay").style.display = "flex";
+});
+document.getElementById("btnDebugToggle").addEventListener("click", ()=>{
+  document.getElementById("debugPanel").classList.toggle("open");
+});
+
+/* ---- Versionsanzeige ---- */
+document.getElementById("verLabel").textContent = APP_VERSION;
+document.getElementById("verLabel2").textContent = APP_VERSION;
+document.getElementById("protoFooter").textContent = "";
+
+/* ---- Netz-Modus Umschaltung ---- */
+document.getElementById("modeBar").addEventListener("click", (ev)=>{
+  const btn = ev.target.closest("button[data-mode]");
+  if(!btn) return;
+  STATE.netzModus = btn.getAttribute("data-mode");
+  document.querySelectorAll("#modeBar button").forEach(b=>b.classList.toggle("active", b===btn));
+  document.getElementById("modeA").style.display = STATE.netzModus==="A" ? "" : "none";
+  document.getElementById("modeB").style.display = STATE.netzModus==="B" ? "" : "none";
+  document.getElementById("modeC").style.display = STATE.netzModus==="C" ? "" : "none";
+  recompute();
+});
+
+/* ---- Strecke: Abschnittskarten ---- */
+function renderStrecke(){
+  const host = document.getElementById("strecke");
+  host.innerHTML = "";
+  STATE.abschnitte.forEach((ab, idx)=>{
+    const card = el("div", { class:"card" });
+    card.appendChild(el("div", { class:"card-head" }, [
+      el("strong", { text: "Abschnitt "+(idx+1) }),
+      el("div", {}, [
+        el("button", { text:"↑", title:"nach oben" , onclick:null}),
+      ])
+    ]));
+    const up = el("button", { text:"↑" }); up.addEventListener("click", ()=>{ if(idx>0){ [STATE.abschnitte[idx-1],STATE.abschnitte[idx]]=[STATE.abschnitte[idx],STATE.abschnitte[idx-1]]; renderStrecke(); recompute(); } });
+    const down = el("button", { text:"↓" }); down.addEventListener("click", ()=>{ if(idx<STATE.abschnitte.length-1){ [STATE.abschnitte[idx+1],STATE.abschnitte[idx]]=[STATE.abschnitte[idx],STATE.abschnitte[idx+1]]; renderStrecke(); recompute(); } });
+    const del = el("button", { text:"✕ löschen", class:"danger" }); del.addEventListener("click", ()=>{ STATE.abschnitte.splice(idx,1); renderStrecke(); recompute(); });
+    card.querySelector(".card-head div").append(up, down, del);
+
+    const row1 = el("div", { class:"row" });
+    const fName = mkField("Bezeichnung", "text", ab.name, v=>{ab.name=v; recompute();});
+    const fLen = mkField("Länge l [m]", "number", ab.l_m, v=>{ab.l_m=parseFloat(v)||0; recompute();});
+    const fMat = mkSelectField("Material", ["Cu","Al"], ab.material, v=>{ab.material=v; recompute();});
+    row1.append(fName, fLen, fMat);
+
+    const row2 = el("div", { class:"row" });
+    const fAL = mkField("Querschnitt L [mm²]", "number", ab.A_L, v=>{ab.A_L=parseFloat(v)||0; recompute();});
+    const fAN = mkField("Querschnitt N [mm²]", "number", ab.A_N, v=>{ab.A_N=parseFloat(v)||0; recompute();});
+    const fAPE = mkField("Querschnitt PE [mm²]", "number", ab.A_PE, v=>{ab.A_PE=parseFloat(v)||0; recompute();});
+    row2.append(fAL, fAN, fAPE);
+
+    const row3 = el("div", { class:"row" });
+    const fVerlege = mkField("Verlegeart (Dokumentation, DIN VDE 0298-4)", "text", ab.verlegeart, v=>{ab.verlegeart=v;});
+    const fN = mkField("Parallele Kabel n", "number", ab.n_parallel, v=>{ab.n_parallel=parseInt(v)||1; recompute();});
+    const fIso = mkSelectField("Isolierung (Endtemperatur Ik_min)", ["PVC","VPE"], ab.isoliert, v=>{ab.isoliert=v; recompute();});
+    row3.append(fVerlege, fN, fIso);
+
+    const row4 = el("div", { class:"row" });
+    const fX = mkField("Reaktanzbelag x' [Ω/km]", "number", ab.x_strich, v=>{ab.x_strich=parseFloat(v)||0.08; recompute();});
+    const fIz = mkField("Belastbarkeit Iz der Leitung [A] (DIN VDE 0298-4)", "number", ab.Iz_A, v=>{ab.Iz_A=parseFloat(v)||null; recompute();});
+    const fStoss = mkField("Stoßstromfestigkeit Verteilung [kA] (optional)", "number", ab.stossstromfestigkeit_kA, v=>{ab.stossstromfestigkeit_kA=parseFloat(v)||null; recompute();});
+    row4.append(fX, fIz, fStoss);
+
+    const row5 = el("div", { class:"row" });
+    const fZeit = mkSelectField("Stromkreisart (Abschaltzeit)", ["Endstromkreis","Verteilung"], ab.stromkreisart||"Endstromkreis", v=>{ab.stromkreisart=v; recompute();});
+    row5.append(fZeit);
+
+    card.append(row1,row2,row3,row4,row5);
+    host.appendChild(card);
+  });
+}
+function mkField(labelTxt, type, value, onChange){
+  const wrap = el("div", { class:"field" });
+  wrap.appendChild(el("label", { text:labelTxt }));
+  const input = el("input", { type, value: value ?? "" });
+  input.addEventListener("change", ()=>onChange(input.value));
+  wrap.appendChild(input);
+  return wrap;
+}
+function mkSelectField(labelTxt, options, value, onChange){
+  const wrap = el("div", { class:"field" });
+  wrap.appendChild(el("label", { text:labelTxt }));
+  const sel = el("select");
+  options.forEach(o=>{ const op = el("option", { value:o, text:o }); if(o===value) op.setAttribute("selected","selected"); sel.appendChild(op); });
+  sel.addEventListener("change", ()=>onChange(sel.value));
+  wrap.appendChild(sel);
+  return wrap;
+}
+
+document.getElementById("btnAddAbschnitt").addEventListener("click", ()=>{
+  STATE.abschnitte.push({ name:"Abschnitt "+(STATE.abschnitte.length+1), l_m:20, A_L:16, A_N:16, A_PE:16, material:"Cu", verlegeart:"", n_parallel:1, isoliert:"PVC", x_strich:0.08, Iz_A:null, stossstromfestigkeit_kA:null, stromkreisart:"Endstromkreis" });
+  renderStrecke(); recompute();
+});
+
+/* ---- Sicherungsbibliothek ---- */
+function renderFuseList(){
+  document.getElementById("fuseCount").textContent = STATE.fuseLibrary.length;
+  const host = document.getElementById("fuseList");
+  host.innerHTML = "";
+  STATE.fuseLibrary.forEach((f, idx)=>{
+    const card = el("div", { class:"card" });
+    const head = el("div", { class:"card-head" }, [
+      el("strong", { text: `${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse} ${f.In_A?f.In_A+"A":""}${f.Ich_A?" M "+f.Ich_A+"A":""}${f.Sr_kVA?f.Sr_kVA+"kVA":""} / ${f.Un_V}V` })
+    ]);
+    const del = el("button", { text:"✕", class:"danger" }); del.addEventListener("click", ()=>{ STATE.fuseLibrary.splice(idx,1); renderFuseList(); refreshFuseSelectors(); saveState(); });
+    head.appendChild(del);
+    card.appendChild(head);
+    card.appendChild(el("div", { class:"small", text: `Icn=${f.Icn_kA??"—"}kA · Quelle: ${f.quelle||"—"} (Stand ${f.stand||"—"})` }));
+    host.appendChild(card);
+  });
+}
+
+document.getElementById("btnNewFuseTemplate").addEventListener("click", ()=>{
+  showFuseEditor(neueSicherungsvorlage());
+});
+
+function showFuseEditor(fuse){
+  const host = document.getElementById("fuseEditorHost");
+  host.innerHTML = "";
+  const card = el("div", { class:"card" });
+  card.appendChild(el("h3", { text:"Sicherungsdatensatz anlegen/bearbeiten" }));
+  const jsonArea = el("textarea", { class:"jsonbox" });
+  jsonArea.value = JSON.stringify(fuse, null, 2);
+  card.appendChild(el("p", { class:"hinweis", text:"Struktur gemäß Lastenheft Abschnitt 4.4. Kennlinienwerte (I_A: null) sind vom Anwender aus den Herstellerunterlagen einzutragen -- keine Schätzwerte einsetzen." }));
+  card.appendChild(jsonArea);
+  const btnSave = el("button", { text:"Datensatz speichern", class:"primary" });
+  btnSave.addEventListener("click", ()=>{
+    try{
+      const parsed = JSON.parse(jsonArea.value);
+      STATE.fuseLibrary.push(parsed);
+      renderFuseList(); refreshFuseSelectors(); saveState();
+      host.innerHTML = "";
+    }catch(e){ alert("Ungültiges JSON: "+e.message); }
+  });
+  const btnCancel = el("button", { text:"Abbrechen" });
+  btnCancel.addEventListener("click", ()=>{ host.innerHTML=""; });
+  card.append(btnSave, btnCancel);
+  host.appendChild(card);
+}
+
+document.getElementById("btnExportFuses").addEventListener("click", ()=>{
+  downloadJSON(STATE.fuseLibrary, "sicherungsbibliothek.json");
+});
+document.getElementById("fuseImportFile").addEventListener("change", (ev)=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      const arr = Array.isArray(data) ? data : [data];
+      STATE.fuseLibrary.push(...arr);
+      renderFuseList(); refreshFuseSelectors(); saveState();
+    }catch(e){ alert("Import fehlgeschlagen: "+e.message); }
+  };
+  reader.readAsText(file);
+});
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href:url, download:filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ---- Kaskadierende Sicherungsauswahl ---- */
+function refreshFuseSelectors(){
+  const selBau = document.getElementById("sel_baugroesse");
+  const selKlasse = document.getElementById("sel_klasse");
+  const selUn = document.getElementById("sel_un");
+  const selIn = document.getElementById("sel_in");
+  const lib = STATE.fuseLibrary;
+
+  function uniq(arr){ return [...new Set(arr)]; }
+  const baugroessen = uniq(lib.map(f=>f.baugroesse)).filter(Boolean);
+  fillSelect(selBau, baugroessen.length?baugroessen:BAUGROESSEN);
+
+  const klassenVerf = uniq(lib.filter(f=>!selBau.value||f.baugroesse===selBau.value).map(f=>f.klasse));
+  fillSelect(selKlasse, klassenVerf.length?klassenVerf:Object.keys(BETRIEBSKLASSEN));
+
+  const unVerf = uniq(lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)).map(f=>f.Un_V)).filter(Boolean);
+  fillSelect(selUn, unVerf);
+
+  const inVerf = lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)&&(!selUn.value||f.Un_V==selUn.value));
+  selIn.innerHTML = "";
+  inVerf.forEach((f,i)=>{
+    const label = f.klasse==="gM" ? `${f.In_A} M ${f.Ich_A}` : (f.klasse==="gTr" ? `${f.Sr_kVA} kVA` : `${f.In_A} A`);
+    selIn.appendChild(el("option", { value:i, text: label + ` (${f.hersteller||"?"} ${f.typbezeichnung||""})` }));
+  });
+
+  const nodeSel = document.getElementById("sel_node");
+  nodeSel.innerHTML = "";
+  const strecke = aktuelleStrecke();
+  if(strecke) strecke.knoten.forEach((k,i)=> nodeSel.appendChild(el("option", { value:i, text:`${i}: ${k.name}` })));
+}
+function fillSelect(sel, values){
+  const prev = sel.value;
+  sel.innerHTML = "";
+  values.forEach(v=> sel.appendChild(el("option", { value:v, text:v })));
+  if(values.includes(prev)) sel.value = prev;
+}
+["sel_baugroesse","sel_klasse","sel_un"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", refreshFuseSelectors);
+});
+
+document.getElementById("btnAssignFuse").addEventListener("click", ()=>{
+  const selBau = document.getElementById("sel_baugroesse").value;
+  const selKlasse = document.getElementById("sel_klasse").value;
+  const selUn = document.getElementById("sel_un").value;
+  const idx = parseInt(document.getElementById("sel_in").value);
+  const nodeIdx = parseInt(document.getElementById("sel_node").value);
+  const inVerf = STATE.fuseLibrary.filter(f=>(!selBau||f.baugroesse===selBau)&&(!selKlasse||f.klasse===selKlasse)&&(!selUn||f.Un_V==selUn));
+  const fuse = inVerf[idx];
+  if(!fuse){ alert("Keine Sicherung in der Bibliothek gefunden -- bitte zunächst Datensatz anlegen/importieren."); return; }
+  STATE.nodeAssignments[nodeIdx] = STATE.fuseLibrary.indexOf(fuse);
+  recompute(); saveState();
+});
+
+function aktuelleStrecke(){
+  try{ return berechneStrecke(sammleNetzInput()); }catch(e){ return null; }
+}
+function sammleNetzInput(){
+  const c_max = parseFloat(document.getElementById("f_cmax").value);
+  const netzform = document.getElementById("f_netzform").value;
+  let netz;
+  if(STATE.netzModus==="A"){
+    netz = { modus:"A", Ik3_kA: parseFloat(document.getElementById("a_ik3").value), RX: parseFloat(document.getElementById("a_rx").value), Un_V: parseFloat(document.getElementById("a_un").value) };
+  } else if(STATE.netzModus==="B"){
+    netz = { modus:"B", SkQ_MVA: parseFloat(document.getElementById("b_skq").value), RXq: parseFloat(document.getElementById("b_rxq").value),
+      Un_HV_V: parseFloat(document.getElementById("b_unhv").value), Un_LV_V: parseFloat(document.getElementById("b_unlv").value),
+      SrT_kVA: parseFloat(document.getElementById("b_srt").value), ukr_pct: parseFloat(document.getElementById("b_ukr").value), PkrT_kW: parseFloat(document.getElementById("b_pkrt").value),
+      Un_V: parseFloat(document.getElementById("b_unlv").value) };
+  } else {
+    netz = { modus:"C", ZS_gemessen_Ohm: parseFloat(document.getElementById("c_zs").value), RX_gemessen: parseFloat(document.getElementById("c_rx").value), Un_V: parseFloat(document.getElementById("c_un").value) };
+  }
+  return { netz, abschnitte: STATE.abschnitte, c_max, netzform };
+}
+
+/* ---- Ergebnisdarstellung + Bewertung ---- */
+function recompute(){
+  const strecke = aktuelleStrecke();
+  if(!strecke) return;
+  const netzform = document.getElementById("f_netzform").value;
+  const host = document.getElementById("ergebnisse");
+  host.innerHTML = "";
+
+  strecke.knoten.forEach((k, idx)=>{
+    const fuseIdx = STATE.nodeAssignments[idx];
+    const fuse = fuseIdx!=null ? STATE.fuseLibrary[fuseIdx] : null;
+    const ab = k.abschnitt && k.abschnitt.ab;
+    const material = ab ? ab.material : "Cu";
+    const isoliert = ab ? ab.isoliert : "PVC";
+    const A_L = ab ? ab.A_L : null;
+    const Iz_A = ab ? ab.Iz_A : null;
+    const stossstromfestigkeit_kA = ab ? ab.stossstromfestigkeit_kA : null;
+    const stromkreisart = ab ? (ab.stromkreisart||"Endstromkreis") : "Endstromkreis";
+    const zeitConf = NORM.abschaltzeiten[netzform] || NORM.abschaltzeiten["TN-S"];
+    const geforderteZeit_s = stromkreisart==="Endstromkreis" ? zeitConf.endstromkreis_s : zeitConf.verteilung_s;
+
+    const vorFuseIdx = idx>0 ? STATE.nodeAssignments[idx-1] : null;
+    const vorgelagerteFuse = vorFuseIdx!=null ? STATE.fuseLibrary[vorFuseIdx] : null;
+
+    const bew = fuse ? bewerteKnoten({ knotenErg:k, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }) : null;
+
+    const card = el("div", { class:"card" });
+    card.appendChild(el("h3", { text: `Knoten ${idx}: ${k.name}` }));
+    const kz = el("div", {});
+    kz.appendChild(kennzahl("Ik3max", fmt(k.Ik3max_kA)+" kA"));
+    kz.appendChild(kennzahl("Ik2", fmt(k.Ik2_kA)+" kA"));
+    kz.appendChild(kennzahl("Ik1min", fmt(k.Ik1min_A,1)+" A"));
+    kz.appendChild(kennzahl("ZS(min)", fmt(k.ZS_min_Ohm,4)+" Ω"));
+    kz.appendChild(kennzahl("ip", fmt(k.ip_kA)+" kA"));
+    kz.appendChild(kennzahl("κ", fmt(k.kappa,3)));
+    card.appendChild(kz);
+
+    if(fuse){
+      card.appendChild(el("div", { class:"small", text:`Zugeordnete Sicherung: ${fuse.hersteller||"?"} ${fuse.typbezeichnung||""} — ${fuse.klasse} ${fuse.baugroesse} ${fuse.In_A?fuse.In_A+"A":""}` }));
+      klassenWarnungen(fuse).forEach(w=> card.appendChild(el("div", { class:"warnbox", text:"⚠ "+w })));
+    }
+
+    if(bew){
+      card.appendChild(ampel("1. Abschaltbedingung (DIN VDE 0100-410)", bew.abschaltbedingung));
+      card.appendChild(ampel("2. Ausschaltvermögen", bew.ausschaltvermoegen));
+      card.appendChild(ampel("3. Überlastschutz der Leitung", bew.ueberlastschutz));
+      card.appendChild(ampel("4. Thermische Kurzschlussfestigkeit (DIN VDE 0100-430)", bew.thermisch));
+      card.appendChild(ampel("5. Selektivität", bew.selektivitaet));
+      card.appendChild(ampel("6a. Dynamische Beanspruchung — ip", bew.dynamisch.ip_pruefung));
+      card.appendChild(ampel("6b. Begrenzter Durchlassstrom Id", bew.dynamisch.durchlassstrom));
+      if(bew.abschaltbedingung.extrapoliert) card.appendChild(el("div", { class:"warnbox", text:"⚠ Abschaltzeit aus extrapoliertem Kennlinienbereich ermittelt." }));
+    }
+
+    const rw = el("details", { class:"rechenweg" });
+    rw.appendChild(el("summary", { text:"Vollständiger Rechenweg anzeigen" }));
+    const pre = el("pre");
+    pre.textContent = rechenwegText(k, idx, strecke, netzform, geforderteZeit_s);
+    rw.appendChild(pre);
+    card.appendChild(rw);
+
+    host.appendChild(card);
+  });
+
+  refreshChartNodeSelectors(strecke);
+  drawChart();
+  renderProtokoll(strecke, netzform);
+  saveState();
+}
+
+function kennzahl(label, val){
+  return el("div", { class:"kennzahl" }, [ el("span", { class:"val", text:val }), el("span", { class:"lbl", text:label }) ]);
+}
+function ampel(title, res){
+  if(!res) return document.createTextNode("");
+  const cls = res.status==="ok" ? "ok" : (res.status==="bad" ? "bad" : "na");
+  const box = el("div", { class:"ampel "+cls });
+  const row = el("div", { class:"titlerow" }, [ el("span", { text:title }),
+    el("span", { class:"tag "+cls, text: res.status==="ok"?"bestanden":(res.status==="bad"?"nicht bestanden":"nicht anwendbar") }) ]);
+  box.appendChild(row);
+  if(res.text) box.appendChild(el("div", { class:"small", text:res.text }));
+  if(res.sicherheitsfaktor!=null) box.appendChild(el("div", { class:"small", text:"Sicherheitsfaktor Ik1min/Ia = "+fmt(res.sicherheitsfaktor,2) }));
+  return box;
+}
+
+function rechenwegText(k, idx, strecke, netzform, geforderteZeit_s){
+  const lines = [];
+  lines.push(`Knoten ${idx}: ${k.name}`);
+  lines.push(`R1(max,20°C) = ${fmt(k.R1max,6)} Ω, X1(max,20°C) = ${fmt(k.X1max,6)} Ω`);
+  lines.push(`R1(min,Betriebstemp.) = ${fmt(k.R1min,6)} Ω, X1(min) = ${fmt(k.X1min,6)} Ω`);
+  lines.push(`RPE(min) = ${fmt(k.RPEmin,6)} Ω, XPE(min) = ${fmt(k.XPEmin,6)} Ω`);
+  lines.push(`ZS(min) = sqrt((R1min+RPEmin)² + (X1min+XPEmin)²) = ${fmt(k.ZS_min_Ohm,6)} Ω`);
+  lines.push(`Ik3max = c_max*Un / (sqrt(3)*sqrt(R1max²+X1max²))  [DIN EN 60909-0] = ${fmt(k.Ik3max_kA,4)} kA`);
+  lines.push(`Ik2 = (sqrt(3)/2)*Ik3max  [DIN EN 60909-0] = ${fmt(k.Ik2_kA,4)} kA`);
+  lines.push(`Ik1min = c_min*U0 / ZS(min)  [DIN EN 60909-0, vereinfachtes Impedanzverfahren] = ${fmt(k.Ik1min_A,2)} A`);
+  lines.push(`kappa = 1,02+0,98*e^(-3*R/X) = ${fmt(k.kappa,4)}; ip = kappa*sqrt(2)*Ik3max = ${fmt(k.ip_kA,4)} kA`);
+  lines.push(`Netzform: ${netzform}; geforderte Abschaltzeit (Tab. 41.1 DIN VDE 0100-410): ${geforderteZeit_s ?? "nicht definiert"} s`);
+  return lines.join("\n");
+}
+
+/* ---- Diagramm (Canvas, log-log, HiDPI) ---- */
+function refreshChartNodeSelectors(strecke){
+  const nodeSel = document.getElementById("chartNode");
+  const prevVal = nodeSel.value;
+  nodeSel.innerHTML = "";
+  strecke.knoten.forEach((k,i)=> nodeSel.appendChild(el("option", { value:i, text:`${i}: ${k.name}` })));
+  if(prevVal) nodeSel.value = prevVal;
+
+  const cmp = document.getElementById("chartCompare");
+  cmp.innerHTML = "";
+  STATE.fuseLibrary.forEach((f,i)=> cmp.appendChild(el("option", { value:i, text:`${f.klasse} ${f.baugroesse} ${f.In_A||f.Sr_kVA||""} (${f.hersteller||"?"})` })));
+}
+document.getElementById("chartNode").addEventListener("change", drawChart);
+document.getElementById("chartCompare").addEventListener("change", drawChart);
+
+function drawChart(){
+  const canvas = document.getElementById("chart");
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 1000, cssH = 420;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  canvas.style.height = cssH+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const inkColor = isDark ? "#f0f2f4" : "#101418";
+  const lineColor = isDark ? "#3a4147" : "#c7ced4";
+  ctx.fillStyle = isDark ? "#1e2327" : "#ffffff";
+  ctx.fillRect(0,0,cssW,cssH);
+
+  const margin = { l:60, r:20, t:20, b:40 };
+  const plotW = cssW-margin.l-margin.r, plotH = cssH-margin.t-margin.b;
+
+  // Achsen: X = Strom [A] log 1..100000, Y = Zeit [s] log 0.001..10000 (Zeit nach oben abnehmend, typische Darstellung: Zeit fällt nach rechts)
+  const xMin=1, xMax=1e5, yMin=0.001, yMax=1e4;
+  function xPix(I){ return margin.l + (Math.log10(I)-Math.log10(xMin))/(Math.log10(xMax)-Math.log10(xMin))*plotW; }
+  function yPix(t){ return margin.t + plotH - (Math.log10(t)-Math.log10(yMin))/(Math.log10(yMax)-Math.log10(yMin))*plotH; }
+
+  ctx.strokeStyle = lineColor; ctx.fillStyle = inkColor; ctx.font = "11px sans-serif";
+  ctx.lineWidth = 1;
+  for(let e=0;e<=5;e++){
+    const I = Math.pow(10, e);
+    if(I<xMin||I>xMax) continue;
+    const x = xPix(I);
+    ctx.beginPath(); ctx.moveTo(x, margin.t); ctx.lineTo(x, margin.t+plotH); ctx.stroke();
+    ctx.fillText(I>=1000? (I/1000)+"k":String(I), x-10, cssH-margin.b+14);
+  }
+  for(let e=-3;e<=4;e++){
+    const t = Math.pow(10,e);
+    const y = yPix(t);
+    ctx.beginPath(); ctx.moveTo(margin.l, y); ctx.lineTo(cssW-margin.r, y); ctx.stroke();
+    ctx.fillText(t>=1?String(t):t.toString(), 4, y+4);
+  }
+  ctx.save();
+  ctx.translate(14, margin.t+plotH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText("Zeit t [s]", 0,0);
+  ctx.restore();
+  ctx.fillText("Strom I [A]", cssW/2, cssH-6);
+
+  function plotKennlinie(kennlinie, color, dashUnknownOk){
+    const pts = gueltigePunkte(kennlinie);
+    if(pts.length<2) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 2.2;
+    for(let i=0;i<pts.length-1;i++){
+      ctx.beginPath(); ctx.setLineDash([]);
+      ctx.moveTo(xPix(pts[i].I_A), yPix(pts[i].t_s));
+      ctx.lineTo(xPix(pts[i+1].I_A), yPix(pts[i+1].t_s));
+      ctx.stroke();
+    }
+    // Extrapolation: gestrichelt über den Rand hinaus (bis Diagrammrand)
+    ctx.setLineDash([6,5]);
+    const first = pts[0], second = pts[1];
+    const last = pts[pts.length-1], vorletzt = pts[pts.length-2];
+    // nach links (größere Ströme, kürzere Zeiten) bis xMin-Rand
+    let extI = xMax;
+    let extT = loglogWert(first.I_A, first.t_s, second.I_A, second.t_s, extI);
+    ctx.beginPath(); ctx.moveTo(xPix(first.I_A), yPix(first.t_s)); ctx.lineTo(xPix(Math.min(extI,xMax)), yPix(Math.max(Math.min(extT,yMax),yMin))); ctx.stroke();
+    let extI2 = xMin;
+    let extT2 = loglogWert(last.I_A, last.t_s, vorletzt.I_A, vorletzt.t_s, extI2);
+    ctx.beginPath(); ctx.moveTo(xPix(last.I_A), yPix(last.t_s)); ctx.lineTo(xPix(Math.max(extI2,xMin)), yPix(Math.min(Math.max(extT2,yMin),yMax))); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const nodeIdx = parseInt(document.getElementById("chartNode").value);
+  const strecke = aktuelleStrecke();
+  if(strecke && strecke.knoten[nodeIdx]){
+    const k = strecke.knoten[nodeIdx];
+    const fuseIdx = STATE.nodeAssignments[nodeIdx];
+    const fuse = fuseIdx!=null ? STATE.fuseLibrary[fuseIdx] : null;
+    if(fuse) plotKennlinie(fuse.kennlinie, "#0a5fb4");
+
+    const vorFuseIdx = nodeIdx>0 ? STATE.nodeAssignments[nodeIdx-1] : null;
+    const vorFuse = vorFuseIdx!=null ? STATE.fuseLibrary[vorFuseIdx] : null;
+    if(vorFuse) plotKennlinie(vorFuse.kennlinie, "#b47a00");
+
+    // Marker Ik1min / Ik3max
+    ctx.strokeStyle = "#c62828"; ctx.setLineDash([3,3]);
+    if(k.Ik1min_A>0 && k.Ik1min_A<xMax){ ctx.beginPath(); ctx.moveTo(xPix(k.Ik1min_A), margin.t); ctx.lineTo(xPix(k.Ik1min_A), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik1min", xPix(k.Ik1min_A)+3, margin.t+12); }
+    if(k.Ik3max_kA*1000>0 && k.Ik3max_kA*1000<xMax){ ctx.beginPath(); ctx.moveTo(xPix(k.Ik3max_kA*1000), margin.t); ctx.lineTo(xPix(k.Ik3max_kA*1000), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik3max", xPix(k.Ik3max_kA*1000)+3, margin.t+26); }
+    ctx.strokeStyle = "#1e9a41";
+    [0.4,5].forEach(t=>{ ctx.beginPath(); ctx.moveTo(margin.l, yPix(t)); ctx.lineTo(cssW-margin.r, yPix(t)); ctx.stroke(); ctx.fillText(t+"s", cssW-margin.r-24, yPix(t)-3); });
+    ctx.setLineDash([]);
+  }
+
+  const cmp = document.getElementById("chartCompare");
+  const palette = ["#9c27b0","#00897b","#e64a19","#3949ab","#c0ca33"];
+  [...cmp.selectedOptions].forEach((opt,i)=>{
+    const f = STATE.fuseLibrary[parseInt(opt.value)];
+    if(f) plotKennlinie(f.kennlinie, palette[i%palette.length]);
+  });
+}
+window.addEventListener("resize", ()=>drawChart());
+
+/* ---- Protokoll ---- */
+function renderProtokoll(strecke, netzform){
+  document.getElementById("protoHead").innerHTML = `
+    <table>
+      <tr><th>Kunde</th><td>${escapeHtml(document.getElementById("f_kunde").value)}</td><th>Anlage</th><td>${escapeHtml(document.getElementById("f_anlage").value)}</td></tr>
+      <tr><th>Anlagenteil</th><td>${escapeHtml(document.getElementById("f_anlagenteil").value)}</td><th>Netzform</th><td>${netzform}</td></tr>
+      <tr><th>Prüfer</th><td>${escapeHtml(document.getElementById("f_pruefer").value)}</td><th>Datum</th><td>${escapeHtml(document.getElementById("f_datum").value)}</td></tr>
+    </table>`;
+  document.getElementById("protoEingaben").innerHTML = `<h3>Eingaben Netzeinspeisung (Modus ${STATE.netzModus})</h3><pre>${escapeHtml(JSON.stringify(sammleNetzInput().netz,null,2))}</pre>`;
+  let rows = "";
+  strecke.knoten.forEach((k,i)=>{
+    rows += `<tr><td>${i}</td><td>${escapeHtml(k.name)}</td><td>${fmt(k.Ik3max_kA)}</td><td>${fmt(k.Ik2_kA)}</td><td>${fmt(k.Ik1min_A,1)}</td><td>${fmt(k.ZS_min_Ohm,4)}</td><td>${fmt(k.ip_kA)}</td></tr>`;
+  });
+  document.getElementById("protoErgebnisse").innerHTML = `<h3>Ergebnisse je Knoten</h3>
+    <table><tr><th>#</th><th>Bezeichnung</th><th>Ik3max [kA]</th><th>Ik2 [kA]</th><th>Ik1min [A]</th><th>ZS(min) [Ω]</th><th>ip [kA]</th></tr>${rows}</table>`;
+  document.getElementById("protoBewertung").innerHTML = `<h3>Bewertungsübersicht</h3><p class="small">Siehe Ampel-Panels je Knoten im Ergebnisbereich (Abschnitt 5) — beim Drucken werden diese mit ausgegeben, da <code>#ergebnisse</code> Teil des Ausdrucks ist.</p>`;
+  const quellen = STATE.fuseLibrary.filter((f,i)=>Object.values(STATE.nodeAssignments).includes(i)).map(f=>`${f.hersteller} ${f.typbezeichnung} (Stand ${f.stand||"—"}, Quelle: ${f.quelle||"—"})`).join("; ");
+  document.getElementById("protoQuelle").textContent = quellen || "keine Sicherung zugeordnet";
+  document.getElementById("protoFooter").textContent = `Version ${APP_VERSION} · Berechnet am ${new Date().toLocaleString("de-DE")}`;
+}
+function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+
+/* ---- Export/Import Berechnungsfall ---- */
+document.getElementById("btnExportCase").addEventListener("click", ()=>{
+  const full = {
+    header:{
+      kunde:document.getElementById("f_kunde").value, anlage:document.getElementById("f_anlage").value,
+      anlagenteil:document.getElementById("f_anlagenteil").value, pruefer:document.getElementById("f_pruefer").value,
+      datum:document.getElementById("f_datum").value, netzform:document.getElementById("f_netzform").value,
+      cmax:document.getElementById("f_cmax").value
+    },
+    netzModus: STATE.netzModus,
+    netzFelder: {
+      a_ik3:document.getElementById("a_ik3").value, a_rx:document.getElementById("a_rx").value, a_un:document.getElementById("a_un").value,
+      b_skq:document.getElementById("b_skq").value, b_rxq:document.getElementById("b_rxq").value, b_unhv:document.getElementById("b_unhv").value,
+      b_srt:document.getElementById("b_srt").value, b_ukr:document.getElementById("b_ukr").value, b_pkrt:document.getElementById("b_pkrt").value, b_unlv:document.getElementById("b_unlv").value,
+      c_zs:document.getElementById("c_zs").value, c_rx:document.getElementById("c_rx").value, c_un:document.getElementById("c_un").value
+    },
+    abschnitte: STATE.abschnitte, fuseLibrary: STATE.fuseLibrary, nodeAssignments: STATE.nodeAssignments,
+    version: APP_VERSION, zeitstempel: new Date().toISOString()
+  };
+  downloadJSON(full, "berechnungsfall.json");
+});
+document.getElementById("caseImportFile").addEventListener("change", (ev)=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      applyCase(data);
+    }catch(e){ alert("Import fehlgeschlagen: "+e.message); }
+  };
+  reader.readAsText(file);
+});
+function applyCase(data){
+  if(data.header){
+    document.getElementById("f_kunde").value = data.header.kunde||"";
+    document.getElementById("f_anlage").value = data.header.anlage||"";
+    document.getElementById("f_anlagenteil").value = data.header.anlagenteil||"";
+    document.getElementById("f_pruefer").value = data.header.pruefer||"";
+    document.getElementById("f_datum").value = data.header.datum||"";
+    document.getElementById("f_netzform").value = data.header.netzform||"TN-S";
+    document.getElementById("f_cmax").value = data.header.cmax||"1.10";
+  }
+  if(data.netzFelder){
+    for(const id in data.netzFelder){ const elx=document.getElementById(id); if(elx) elx.value = data.netzFelder[id]; }
+  }
+  STATE.netzModus = data.netzModus || "A";
+  document.querySelectorAll("#modeBar button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-mode")===STATE.netzModus));
+  document.getElementById("modeA").style.display = STATE.netzModus==="A" ? "" : "none";
+  document.getElementById("modeB").style.display = STATE.netzModus==="B" ? "" : "none";
+  document.getElementById("modeC").style.display = STATE.netzModus==="C" ? "" : "none";
+  STATE.abschnitte = data.abschnitte || [];
+  STATE.fuseLibrary = data.fuseLibrary || [];
+  STATE.nodeAssignments = data.nodeAssignments || {};
+  renderStrecke(); renderFuseList(); refreshFuseSelectors(); recompute();
+}
+
+document.getElementById("btnResetAll").addEventListener("click", ()=>{
+  if(!confirm("Wirklich alle Eingaben, die Sicherungsbibliothek und die Strecke zurücksetzen?")) return;
+  localStorage.removeItem("nhrechner_state_v1");
+  STATE = { header:{}, netzModus:"A", netz:{}, abschnitte:[], fuseLibrary:[], nodeAssignments:{}, nodeParams:{}, logoBase64:null };
+  document.getElementById("f_kunde").value=""; document.getElementById("f_anlage").value=""; document.getElementById("f_anlagenteil").value="";
+  document.getElementById("f_pruefer").value=""; document.getElementById("f_datum").value=""; document.getElementById("f_netzform").value="TN-S";
+  renderStrecke(); renderFuseList(); refreshFuseSelectors(); recompute();
+});
+
+/* ---- Logo Upload (Base64, lokal) ---- */
+document.getElementById("f_logo").addEventListener("change", (ev)=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ STATE.logoBase64 = reader.result; saveState(); };
+  reader.readAsDataURL(file);
+});
+
+/* ---- Testsuite UI ---- */
+document.getElementById("btnRunTests").addEventListener("click", ()=>{
+  const results = runTestSuite();
+  TESTOUT = results;
+  const host = document.getElementById("testResults");
+  host.innerHTML = "";
+  const table = el("table");
+  table.appendChild(el("tr", {}, [el("th",{text:"Test"}), el("th",{text:"Ergebnis"}), el("th",{text:"Detail"})]));
+  let allPass = true;
+  results.forEach(r=>{
+    if(!r.pass) allPass=false;
+    table.appendChild(el("tr", {}, [
+      el("td", { text:r.name }),
+      el("td", { text: r.pass?"BESTANDEN":"FEHLGESCHLAGEN", class: r.pass?"":"warnbox" }),
+      el("td", { class:"small", text: (r.info||"") + (r.expected!=null?` (erwartet ${fmt(r.expected,4)}, erhalten ${fmt(r.actual,4)})`:"") })
+    ]));
+  });
+  host.appendChild(el("p", { text: allPass? "Alle Tests bestanden." : "Es sind Tests fehlgeschlagen!" }));
+  host.appendChild(table);
+  const changelog = el("div", {});
+  changelog.appendChild(el("h3", { text:"Änderungshistorie" }));
+  CHANGELOG.forEach(c=> changelog.appendChild(el("div", { class:"small", text:`${c.v} (${c.datum}): ${c.text}` })));
+  host.appendChild(changelog);
+});
+
+/* ---- Initialisierung ---- */
+function init(){
+  loadState();
+  if(localStorage.getItem("nhrechner_legal_ack")==="1"){ document.getElementById("legalOverlay").style.display="none"; }
+  if(!document.getElementById("f_datum").value) document.getElementById("f_datum").value = new Date().toISOString().slice(0,10);
+  if(STATE.abschnitte.length===0){
+    STATE.abschnitte.push({ name:"Hauptleitung", l_m:20, A_L:35, A_N:35, A_PE:16, material:"Cu", verlegeart:"", n_parallel:1, isoliert:"PVC", x_strich:0.08, Iz_A:null, stossstromfestigkeit_kA:null, stromkreisart:"Verteilung" });
+  }
+  renderStrecke();
+  renderFuseList();
+  refreshFuseSelectors();
+  recompute();
+}
+init();
+</script>
+</body>
+</html>

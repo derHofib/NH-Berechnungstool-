@@ -136,6 +136,19 @@ textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
 .ac-only{display:block;}
 #topoDiagramWrap{overflow-x:auto; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
 #topoDiagram{max-width:100%; height:auto; display:block; margin:0 auto;}
+.modeswitch{display:flex; gap:.3em;}
+.modeswitch button{
+  background:transparent; border:1px solid rgba(255,255,255,.6); color:inherit; min-height:36px; font-weight:600;
+}
+.modeswitch button.active{background:rgba(255,255,255,.92); color:var(--accent);}
+body.mode-einfach .mode-experte{display:none !important;}
+body.mode-experte .mode-einfach{display:none !important;}
+.grosstreffer{font-size:.78rem; color:var(--ink-soft); margin:.3em 0;}
+.einfach-ergebnis-card{border:2px solid; border-radius:var(--radius); padding:.7em .9em; margin-bottom:.6em;}
+.einfach-ergebnis-card.trip{border-color:var(--bad-line); background:var(--bad-bg); color:var(--bad-ink);}
+.einfach-ergebnis-card.notrip{border-color:var(--ok-line); background:var(--ok-bg); color:var(--ok-ink);}
+.einfach-ergebnis-card.unklar{border-color:var(--na-line); background:var(--na-bg); color:var(--na-ink);}
+.einfach-ergebnis-card .titlerow{display:flex; justify-content:space-between; font-weight:700; gap:.5em; flex-wrap:wrap;}
 footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem; color:var(--ink-soft);}
 
 /* Print stylesheet */
@@ -175,6 +188,10 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
 
 <header id="topbar">
   <h1>NH-Kurzschlussstromrechner</h1>
+  <div class="modeswitch" id="modeSwitch">
+    <button data-appmode="einfach" id="btnModeEinfach">👤 Einfach</button>
+    <button data-appmode="experte" id="btnModeExperte">🔧 Experte</button>
+  </div>
   <div class="meta">Version <span id="verLabel"></span> · <button id="btnShowLegal" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Rechtliche Hinweise</button> <button id="btnGlossarToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">❓ Glossar</button> <button id="btnDebugToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Debug/Tests</button></div>
 </header>
 
@@ -197,7 +214,22 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   <div id="testResults"></div>
 </section>
 
-<section class="panel">
+<section class="panel mode-einfach">
+  <h2>Sicherungs-Schnellcheck</h2>
+  <p class="hinweis">Einfacher Modus: Strom eingeben, optional nach Hersteller/Charakteristik/Baugröße filtern —
+  das Tool zeigt, welche Sicherungen aus der Bibliothek (Abschnitt „Sicherungsbibliothek“ unten) bei diesem
+  Strom auslösen würden und nach welcher Zeit. Für die vollständige Netz-/Anlagenberechnung mit Bewertung
+  nach allen sechs Prüfungen bitte in den „🔧 Experte“-Modus wechseln.</p>
+  <div class="row">
+    <div class="field"><label>Strom [A] <button type="button" class="infobtn" data-info="einfach_strom">ⓘ</button></label><input id="ef_strom" type="number" step="1" placeholder="z. B. 1200"></div>
+    <div class="field"><label>Hersteller <button type="button" class="infobtn" data-info="einfach_hersteller">ⓘ</button></label><select id="ef_hersteller"><option value="">Alle</option></select></div>
+    <div class="field"><label>Charakteristik <button type="button" class="infobtn" data-info="einfach_klasse">ⓘ</button></label><select id="ef_klasse"><option value="">Alle</option></select></div>
+    <div class="field"><label>Baugröße (NH) <button type="button" class="infobtn" data-info="einfach_baugroesse">ⓘ</button></label><select id="ef_baugroesse"><option value="">Alle</option></select></div>
+  </div>
+  <div id="einfachErgebnis"></div>
+</section>
+
+<section class="panel mode-experte">
   <h2>1. Anlagen- und Auftragsdaten</h2>
   <div class="row">
     <div class="field"><label>Kunde <button type="button" class="infobtn" data-info="kunde">ⓘ</button></label><input id="f_kunde"></div>
@@ -221,7 +253,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
 
 <div class="grid2">
 
-<section class="panel">
+<section class="panel mode-experte">
   <h2>2. Netzeinspeisung</h2>
   <div class="modebar" id="modeBar">
     <button data-mode="A" class="active">A · Netzangabe (Ik&quot; am Übergabepunkt)</button>
@@ -263,7 +295,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
 </section>
 
-<section class="panel span2">
+<section class="panel span2 mode-experte">
   <h2>3. Anlagentopologie</h2>
   <p class="hinweis">Baumstruktur der Anlage: Netzeinspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise
   (beliebig verschachtelbar), z. B. Netz/Trafo → HAK → Hauptleitung → HV → Steigleitung → UV → Endstromkreis (Abschnitt 5.3).
@@ -289,20 +321,22 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
     <div class="field"><label>JSON-Import Sicherungsbibliothek</label><input type="file" id="fuseImportFile" accept="application/json"></div>
     <div class="field"><label>&nbsp;</label><button id="btnExportFuses">Bibliothek exportieren (JSON)</button></div>
     <div class="field"><label>&nbsp;</label><button id="btnNewFuseTemplate">Neuen Sicherungsdatensatz anlegen</button></div>
+    <div class="field"><label>&nbsp; <button type="button" class="infobtn" data-info="vorlagendatenbank">ⓘ</button></label><button id="btnLoadVorlagenDB">+ Große Vorlagen-Datenbank laden</button></div>
   </div>
   <div id="fuseEditorHost"></div>
   <h3>Bibliothek (<span id="fuseCount">0</span> Datensätze)</h3>
+  <input type="text" id="fuseFilter" placeholder="Bibliothek filtern (Hersteller, Typ, Klasse, Baugröße, In) …">
   <div id="fuseList"></div>
 </section>
 
 </div>
 
-<section class="panel">
+<section class="panel mode-experte">
   <h2>5. Ergebnisse</h2>
   <div id="ergebnisse"></div>
 </section>
 
-<section class="panel">
+<section class="panel mode-experte">
   <h2>6. Zeit-Strom-Kennlinien-Diagramm</h2>
   <div class="row">
     <div class="field"><label>Knoten für Diagramm</label><select id="chartNode"></select></div>
@@ -314,7 +348,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   <p class="hinweis">Gestrichelte Linienabschnitte = Extrapolation außerhalb hinterlegter Stützstellen. Vertikale Marker: Ik1min / Ik3max. Horizontale Marker: 0,4 s / 5 s.</p>
 </section>
 
-<section class="panel no-print">
+<section class="panel no-print mode-experte">
   <h2>7. Protokoll &amp; Datenaustausch</h2>
   <div class="row">
     <div class="field"><button class="primary" id="btnPrint">Protokoll drucken / als PDF speichern</button></div>
@@ -324,7 +358,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
 </section>
 
-<section class="panel" id="protokollDruck">
+<section class="panel mode-experte" id="protokollDruck">
   <h2>Prüfprotokoll</h2>
   <div id="protoHead"></div>
   <div id="protoEingaben"></div>
@@ -354,11 +388,12 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
    ============================================================================================ */
 "use strict";
 
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 const CHANGELOG = [
   { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." },
   { v: "1.1.0", datum: "2026-07-26", text: "Anlagentopologie (Baumstruktur Einspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise) mit visuellem SVG-Diagramm ersetzt die frühere lineare Leitungsstrecke. Leitungsdaten und Sicherungszuordnung werden je Knoten in dessen Einstellungen bearbeitet (Klick/Tipp auf den Knoten im Diagramm). Automatische Migration älterer gespeicherter Berechnungsfälle." },
-  { v: "1.2.0", datum: "2026-07-26", text: "Glossar/Wiki hinzugefügt: anklickbare ⓘ-Infofelder neben (fast) jeder Bezeichnung erklären den jeweiligen Datenpunkt inkl. Normbezug; zusätzlich durchsuchbares Glossar-Panel (Kopfzeile) für alle Werte, inklusive der Felder eines Sicherungsdatensatzes (JSON), die keine eigenen Infofelder haben können." }
+  { v: "1.2.0", datum: "2026-07-26", text: "Glossar/Wiki hinzugefügt: anklickbare ⓘ-Infofelder neben (fast) jeder Bezeichnung erklären den jeweiligen Datenpunkt inkl. Normbezug; zusätzlich durchsuchbares Glossar-Panel (Kopfzeile) für alle Werte, inklusive der Felder eines Sicherungsdatensatzes (JSON), die keine eigenen Infofelder haben können." },
+  { v: "1.3.0", datum: "2026-07-26", text: "Einfacher Modus / Experten-Modus (Umschalter in der Kopfzeile) eingeführt: im Einfachen Modus reicht die Eingabe eines Stroms plus optionaler Filter (Hersteller/Charakteristik/Baugröße), das Tool zeigt direkt, welche Sicherungen aus der Bibliothek auslösen würden. Große Vorlagen-Datenbank (Button in der Sicherungsbibliothek) legt auf Knopfdruck viele leere Sicherungsdatensätze für gängige Baugröße/Klasse/Bemessungsstrom-Kombinationen an (ohne Kennlinien-/Herstellerdaten, diese bleiben urheberrechtlich zu befüllen). Bibliotheksliste jetzt filterbar. Glossar-Panel zeigt Einträge thematisch gruppiert." }
 ];
 
 /* =========================================================================
@@ -477,7 +512,13 @@ const GLOSSAR = {
   topo_knoten: { titel:"Knoten (Verteiler/Endstromkreis)", text:"Jeder Knoten der Anlagentopologie steht für einen Verteiler oder einen Endstromkreis und wird über eine eigene, ihn versorgende Leitung an seinen übergeordneten Knoten angeschlossen. Für jeden Knoten werden Ik3max, Ik2, Ik1min, ZS und ip separat ausgewiesen." },
   topo_sicherung: { titel:"Sicherungszuordnung am Knoten", text:"Die einem Knoten zugeordnete Sicherung schützt die Leitung ZU diesem Knoten und sitzt damit physisch im ÜBERGEORDNETEN Verteiler." },
   betriebsklassen: { titel:"Betriebsklassen (gG, gM, aM, gR, aR, gS, gTr, gB, gPV, gN/aN/gD)", text:"Kennzeichnung aus Funktionsklasse (g=Ganzbereich mit Überlast- UND Kurzschlussschutz; a=Teilbereich, NUR Kurzschlussschutz ab ca. 4·In) und Betriebsklasse (Schutzobjekt: G=Leitungen, M=Motoren, R=Halbleiter, S=kombiniert, Tr=Transformator, B=Bergbau, PV=Photovoltaik/DC, N/D=Nordamerika).", quelle:"DIN EN 60269-1/-2 (VDE 0636)" },
-  baugroessen: { titel:"Baugrößen (NH000…NH4a, NH1XL…NH3XL)", text:"Physische Baugröße des NH-Sicherungseinsatzes nach DIN 43620. Bestimmt Passform in NH-Sicherungslasttrennschaltern; die elektrischen Grenzwerte (max. In, Icn) sind je konkretem Sicherungsdatensatz hinterlegt, nicht pauschal je Baugröße geschätzt.", quelle:"DIN 43620" }
+  baugroessen: { titel:"Baugrößen (NH000…NH4a, NH1XL…NH3XL)", text:"Physische Baugröße des NH-Sicherungseinsatzes nach DIN 43620. Bestimmt Passform in NH-Sicherungslasttrennschaltern; die elektrischen Grenzwerte (max. In, Icn) sind je konkretem Sicherungsdatensatz hinterlegt, nicht pauschal je Baugröße geschätzt.", quelle:"DIN 43620" },
+  vorlagendatenbank: { titel:"Große Vorlagen-Datenbank", text:"Legt auf einen Klick viele leere Sicherungsdatensätze für gängige Kombinationen aus Baugröße, Betriebsklasse und Bemessungsstrom (Normstromreihe) an. Enthält KEINE Kennlinien-, Icn- oder Herstellerdaten (diese dürfen nicht erfunden werden) -- dient nur als Ausgangsgerüst, das mit echten Datenblattwerten befüllt werden muss." },
+  // Einfacher Modus (Sicherungs-Schnellcheck)
+  einfach_strom: { titel:"Strom (Einfacher Modus)", text:"Der Strom, für den geprüft werden soll, ob eine Sicherung auslöst — z. B. ein gemessener oder berechneter Kurzschlussstrom. Es wird direkt gegen die Zeit-Strom-Kennlinie der jeweiligen Sicherung geprüft, ohne eigene Netz-/Leitungsberechnung." },
+  einfach_hersteller: { titel:"Hersteller-Filter", text:"Schränkt die Anzeige auf Sicherungen eines bestimmten Herstellers aus der Bibliothek ein. „Alle“ zeigt alle in der Bibliothek vorhandenen Hersteller." },
+  einfach_klasse: { titel:"Charakteristik-Filter", text:"Schränkt die Anzeige auf eine Betriebsklasse (z. B. gG, aM, gR …) ein.", quelle:"DIN EN 60269-1/-2 (VDE 0636)" },
+  einfach_baugroesse: { titel:"Baugrößen-Filter (NH)", text:"Schränkt die Anzeige auf eine bestimmte NH-Baugröße ein.", quelle:"DIN 43620" }
 };
 
 // Baugrößen nach DIN 43620 -- reine Bezeichnungsliste. Numerische Grenzwerte (max. In, Icn je Un)
@@ -520,6 +561,74 @@ function neueSicherungsvorlage(){
     quelle: "",
     stand: ""
   };
+}
+
+/* =========================================================================
+   1b. GROSSE VORLAGEN-DATENBANK (leere Sicherungsdatensätze)
+   ---------------------------------------------------------------------
+   Erzeugt viele Sicherungsdatensätze für gängige Kombinationen aus Baugröße,
+   Betriebsklasse und Bemessungsstrom -- als leere Vorlage (kennlinie/Icn/I²t
+   usw. = null). KEINE Herstellerkennlinien oder sonstigen geschützten Werte
+   werden erfunden; hersteller/typbezeichnung/quelle/stand bleiben leer und
+   sind vom Anwender anhand echter Datenblätter zu befüllen. Bemessungsstrom-
+   Stufen sind die allgemein bekannte IEC/DIN-Normreihe (kein Herstellergeheimnis).
+   ========================================================================= */
+// Allgemein bekannte Bemessungsstrom-Stufenreihe für NH-Sicherungseinsätze (IEC 60269 / DIN 43620).
+const NORMSTROMREIHE_A = [6,10,16,20,25,32,40,50,63,80,100,125,160,200,224,250,315,355,400,425,500,630,800,1000,1250];
+// Typische Transformator-Bemessungsleistungen [kVA] für gTr (allgemein üblich, keine Normfestlegung).
+const NORMSTROMREIHE_TR_KVA = [100,160,250,315,400,500,630,800,1000,1250,1600,2000,2500];
+// Anhaltswerte, bis zu welchem Bemessungsstrom eine Baugröße üblicherweise gefertigt wird
+// (gängige Herstellerkataloge) -- KEINE normative Festlegung, vom Anwender gegen DIN 43620 /
+// den jeweiligen Herstellerkatalog zu prüfen. Steuert nur, welche Normstromstufen je Baugröße
+// als Vorlage angelegt werden.
+const BAUGROESSE_MAX_IN = {
+  NH000:160, NH00:160, NH0:160, NH1:250, NH2:400, NH3:630, NH4:1250, NH4a:1250,
+  NH1XL:250, NH2XL:400, NH3XL:630
+};
+function erzeugeSicherungsVorlage(felder){
+  return Object.assign(neueSicherungsvorlage(), {
+    kennlinie: neueSicherungsvorlage().kennlinie,
+    durchlassstrom: [ { Ik_prosp_kA:null, Id_kA:null } ]
+  }, felder);
+}
+// Baut die große Vorlagen-Datenbank auf: gG über alle Baugrößen (volle Normstromreihe je Baugröße),
+// je eine repräsentative Vorlage für aM/gR/aR/gS/gM je Baugröße, gTr über typische kVA-Stufen,
+// sowie ein paar gPV-DC-Vorlagen. Insgesamt einige hundert leere Datensätze als Ausgangspunkt.
+function erzeugeSicherungsVorlagenDatenbank(){
+  const out = [];
+  const groessen = Object.keys(BAUGROESSE_MAX_IN);
+  // gG: volle Normstromreihe je Baugröße (Referenzklasse, Abschnitt 4.2 Lastenheft)
+  groessen.forEach(bg=>{
+    NORMSTROMREIHE_A.filter(i=>i<=BAUGROESSE_MAX_IN[bg]).forEach(In=>{
+      out.push(erzeugeSicherungsVorlage({ baugroesse:bg, klasse:"gG", In_A:In, Un_V:500 }));
+    });
+  });
+  // aM, gR, aR, gS: je Baugröße eine mittlere Normstromstufe als Startvorlage
+  ["aM","gR","aR","gS"].forEach(klasse=>{
+    groessen.forEach(bg=>{
+      const passende = NORMSTROMREIHE_A.filter(i=>i<=BAUGROESSE_MAX_IN[bg]);
+      const mitte = passende[Math.floor(passende.length/2)];
+      if(mitte) out.push(erzeugeSicherungsVorlage({ baugroesse:bg, klasse, In_A:mitte, Un_V:500 }));
+    });
+  });
+  // gM: Doppelbemessung In M Ich -- Ich bleibt null (reale Zuordnung ist herstellerspezifisch)
+  groessen.forEach(bg=>{
+    const passende = NORMSTROMREIHE_A.filter(i=>i<=BAUGROESSE_MAX_IN[bg]);
+    const mitte = passende[Math.floor(passende.length/2)];
+    if(mitte) out.push(erzeugeSicherungsVorlage({ baugroesse:bg, klasse:"gM", In_A:mitte, Ich_A:null, Un_V:500 }));
+  });
+  // gTr: typische Transformator-kVA-Stufen, Baugröße grob nach Leistungsklasse zugeordnet
+  NORMSTROMREIHE_TR_KVA.forEach(kva=>{
+    const bg = kva<=250?"NH00":kva<=630?"NH1":kva<=1250?"NH2":"NH3";
+    out.push(erzeugeSicherungsVorlage({ baugroesse:bg, klasse:"gTr", Sr_kVA:kva, In_A:null, Un_V:500 }));
+  });
+  // gPV: DC, Beispiel-Baugrößen/-spannungen (1000/1500V DC nach DIN EN 60269-6)
+  ["NH00","NH0","NH1"].forEach(bg=>{
+    NORMSTROMREIHE_A.filter(i=>i<=BAUGROESSE_MAX_IN[bg]&&i<=63).forEach(In=>{
+      out.push(erzeugeSicherungsVorlage({ baugroesse:bg, klasse:"gPV", In_A:In, Un_V:1000, stromart:"DC" }));
+    });
+  });
+  return out;
 }
 
 // ---- Anlagentopologie: Baumstruktur Einspeisung -> Hauptverteilung(en) -> Unterverteilung(en)/Endstromkreise
@@ -1043,7 +1152,7 @@ function runTestSuite(){
    ========================================================================= */
 let STATE = {
   header: {}, netzModus:"A", netz:{}, topologie: neueTopologie(), selectedNodeId:null,
-  fuseLibrary:[], logoBase64:null
+  fuseLibrary:[], logoBase64:null, appMode:"experte"
 };
 STATE.selectedNodeId = STATE.topologie.root.id;
 let TESTOUT = null;
@@ -1163,22 +1272,38 @@ function infoIcon(key){
 }
 
 /* ---- Glossar-Panel (durchsuchbare Gesamtübersicht) ---- */
+// Gruppierung der Glossar-Einträge nach Themenbereich, für die durchsuchbare Gesamtübersicht.
+const GLOSSAR_KATEGORIEN = [
+  { name:"Anlagendaten", keys:["kunde","anlage","anlagenteil","pruefer","netzform","logo","cmax"] },
+  { name:"Netzeinspeisung", keys:["a_ik3","rx_verhaeltnis","un_allgemein","skq","un_hv","srt","ukr","pkrt","zs_gemessen"] },
+  { name:"Leitungsdaten (Topologie-Knoten)", keys:["leitung_laenge","leitung_material","leitung_isolierung","leitung_AL","leitung_AN","leitung_APE","leitung_verlegeart","leitung_n","leitung_xstrich","leitung_iz","leitung_stoss","leitung_stromkreisart"] },
+  { name:"Sicherungsdatensatz (JSON, Abschnitt 4.4)", keys:["f_hersteller","f_typ","f_baugroesse","f_klasse","f_in","f_ich","f_srkva","f_un","f_stromart","f_icn","f_kennlinie","f_schmelzi2t","f_gesamti2t","f_durchlass","f_verlust","f_inf","f_if","f_tkkonv","f_quelle","f_stand"] },
+  { name:"Ergebnis-Kennzahlen", keys:["erg_ik3max","erg_ik2","erg_ik1min","erg_zsmin","erg_ip","erg_kappa"] },
+  { name:"Bewertungen (Abschnitt 6)", keys:["bew_abschalt","bew_ausschalt","bew_ueberlast","bew_thermisch","bew_selektivitaet","bew_dynamisch"] },
+  { name:"Anlagentopologie, Betriebsklassen &amp; Baugrößen", keys:["topo_knoten","topo_sicherung","betriebsklassen","baugroessen","vorlagendatenbank"] },
+  { name:"Einfacher Modus (Sicherungs-Schnellcheck)", keys:["einfach_strom","einfach_hersteller","einfach_klasse","einfach_baugroesse"] }
+];
 function renderGlossarList(filterText){
   const host = document.getElementById("glossarList");
   host.innerHTML = "";
   const f = (filterText||"").trim().toLowerCase();
-  const seen = new Set();
-  Object.values(GLOSSAR).forEach(entry=>{
-    if(seen.has(entry.titel)) return; // mehrfach referenzierte Schlüssel (z.B. rx_verhaeltnis) nur einmal auflisten
-    if(f && !(entry.titel.toLowerCase().includes(f) || entry.text.toLowerCase().includes(f))) return;
-    seen.add(entry.titel);
-    const div = el("div", { class:"glossar-entry" });
-    div.appendChild(el("h4", { text:entry.titel }));
-    div.appendChild(el("div", { class:"small", text:entry.text }));
-    if(entry.quelle) div.appendChild(el("div", { class:"quelle", text:"Quelle: "+entry.quelle }));
-    host.appendChild(div);
+  let treffer = 0;
+  GLOSSAR_KATEGORIEN.forEach(kat=>{
+    const eintraege = kat.keys.map(k=>GLOSSAR[k]).filter(Boolean)
+      .filter(entry => !f || entry.titel.toLowerCase().includes(f) || entry.text.toLowerCase().includes(f));
+    if(!eintraege.length) return;
+    host.appendChild(el("h3", { html: kat.name }));
+    eintraege.forEach(entry=>{
+      treffer++;
+      const div = el("div", { class:"glossar-entry" });
+      div.appendChild(el("h4", { text:entry.titel }));
+      div.appendChild(el("div", { class:"small", text:entry.text }));
+      if(entry.quelle) div.appendChild(el("div", { class:"quelle", text:"Quelle: "+entry.quelle }));
+      host.appendChild(div);
+    });
   });
-  if(!host.children.length) host.appendChild(el("p", { class:"hinweis", text:"Keine Treffer." }));
+  if(!treffer) host.innerHTML = "";
+  if(!treffer) host.appendChild(el("p", { class:"hinweis", text:"Keine Treffer." }));
 }
 document.getElementById("glossarSearch").addEventListener("input", (ev)=> renderGlossarList(ev.target.value));
 document.getElementById("btnGlossarToggle").addEventListener("click", ()=>{
@@ -1204,6 +1329,22 @@ document.getElementById("btnDebugToggle").addEventListener("click", ()=>{
 document.getElementById("verLabel").textContent = APP_VERSION;
 document.getElementById("verLabel2").textContent = APP_VERSION;
 document.getElementById("protoFooter").textContent = "";
+
+/* ---- Einfach-Modus / Experten-Modus ---- */
+function applyAppMode(){
+  document.body.classList.toggle("mode-einfach", STATE.appMode==="einfach");
+  document.body.classList.toggle("mode-experte", STATE.appMode!=="einfach");
+  document.getElementById("btnModeEinfach").classList.toggle("active", STATE.appMode==="einfach");
+  document.getElementById("btnModeExperte").classList.toggle("active", STATE.appMode!=="einfach");
+  if(STATE.appMode==="einfach") refreshEinfachModus();
+}
+document.getElementById("modeSwitch").addEventListener("click", (ev)=>{
+  const btn = ev.target.closest("button[data-appmode]");
+  if(!btn) return;
+  STATE.appMode = btn.getAttribute("data-appmode");
+  applyAppMode();
+  saveState();
+});
 
 /* ---- Netz-Modus Umschaltung ---- */
 document.getElementById("modeBar").addEventListener("click", (ev)=>{
@@ -1463,11 +1604,19 @@ function mkSelectField(labelTxt, options, value, onChange, infoKey){
 }
 
 /* ---- Sicherungsbibliothek ---- */
+const FUSE_LIST_MAX_ANZEIGE = 60;
+function fuseSuchtext(f){
+  return [f.hersteller,f.typbezeichnung,f.klasse,f.baugroesse,f.In_A,f.Ich_A,f.Sr_kVA,f.Un_V].filter(v=>v!=null).join(" ").toLowerCase();
+}
 function renderFuseList(){
   document.getElementById("fuseCount").textContent = STATE.fuseLibrary.length;
   const host = document.getElementById("fuseList");
   host.innerHTML = "";
-  STATE.fuseLibrary.forEach((f, idx)=>{
+  const filterEl = document.getElementById("fuseFilter");
+  const filter = filterEl ? filterEl.value.trim().toLowerCase() : "";
+  const gefiltert = filter ? STATE.fuseLibrary.filter(f=>fuseSuchtext(f).includes(filter)) : STATE.fuseLibrary;
+  gefiltert.slice(0, FUSE_LIST_MAX_ANZEIGE).forEach((f)=>{
+    const idx = STATE.fuseLibrary.indexOf(f);
     const card = el("div", { class:"card" });
     const head = el("div", { class:"card-head" }, [
       el("strong", { text: `${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse} ${f.In_A?f.In_A+"A":""}${f.Ich_A?" M "+f.Ich_A+"A":""}${f.Sr_kVA?f.Sr_kVA+"kVA":""} / ${f.Un_V}V` })
@@ -1483,10 +1632,108 @@ function renderFuseList(){
     card.appendChild(el("div", { class:"small", text: `Icn=${f.Icn_kA??"—"}kA · Quelle: ${f.quelle||"—"} (Stand ${f.stand||"—"})` }));
     host.appendChild(card);
   });
+  if(gefiltert.length > FUSE_LIST_MAX_ANZEIGE){
+    host.appendChild(el("p", { class:"hinweis", text:`${gefiltert.length-FUSE_LIST_MAX_ANZEIGE} weitere Treffer nicht angezeigt -- Filter oben verfeinern.` }));
+  } else if(gefiltert.length===0){
+    host.appendChild(el("p", { class:"hinweis", text:"Keine Treffer." }));
+  }
+  refreshEinfachModus();
 }
+document.getElementById("fuseFilter").addEventListener("input", renderFuseList);
 
 document.getElementById("btnNewFuseTemplate").addEventListener("click", ()=>{
   showFuseEditor(neueSicherungsvorlage());
+});
+document.getElementById("btnLoadVorlagenDB").addEventListener("click", ()=>{
+  const vorlagen = erzeugeSicherungsVorlagenDatenbank();
+  if(!confirm(`Es werden ${vorlagen.length} leere Sicherungs-Vorlagen (verschiedene Baugrößen/Klassen/Bemessungsströme, ohne Kennlinien- oder Herstellerdaten) zur Bibliothek hinzugefügt. Diese müssen anschließend selbst mit echten Datenblattwerten befüllt werden. Fortfahren?`)) return;
+  vorlagen.forEach(ensureFuseId);
+  STATE.fuseLibrary.push(...vorlagen);
+  renderFuseList(); renderNodeEditor(); recompute();
+});
+
+/* ---- Einfacher Modus: Sicherungs-Schnellcheck --------------------------------------------
+   Direkte Stromeingabe + Filter (Hersteller/Charakteristik/Baugröße) -- zeigt für jede
+   passende Sicherung aus der Bibliothek, ob und nach welcher Zeit sie bei diesem Strom
+   auslösen würde (Interpolation über dieselbe Kennlinienlogik wie im Experten-Modus). */
+function refreshEinfachModusFilterOptionen(){
+  const lib = STATE.fuseLibrary;
+  const uniq = a=>[...new Set(a)].filter(v=>v!=null && v!=="");
+  function fillMitAlle(sel, values){
+    const prev = sel.value;
+    sel.innerHTML = "";
+    sel.appendChild(el("option", { value:"", text:"Alle" }));
+    values.forEach(v=> sel.appendChild(el("option", { value:v, text:v })));
+    if(values.includes(prev)) sel.value = prev;
+  }
+  fillMitAlle(document.getElementById("ef_hersteller"), uniq(lib.map(f=>f.hersteller)).sort());
+  fillMitAlle(document.getElementById("ef_klasse"), uniq(lib.map(f=>f.klasse)).sort());
+  fillMitAlle(document.getElementById("ef_baugroesse"), uniq(lib.map(f=>f.baugroesse)).sort());
+}
+function refreshEinfachModus(){
+  if(STATE.appMode!=="einfach") return;
+  refreshEinfachModusFilterOptionen();
+  const host = document.getElementById("einfachErgebnis");
+  host.innerHTML = "";
+  const stromStr = document.getElementById("ef_strom").value;
+  const strom = parseFloat(stromStr);
+  const fHersteller = document.getElementById("ef_hersteller").value;
+  const fKlasse = document.getElementById("ef_klasse").value;
+  const fBaugroesse = document.getElementById("ef_baugroesse").value;
+
+  const passend = STATE.fuseLibrary.filter(f=>
+    (!fHersteller || f.hersteller===fHersteller) &&
+    (!fKlasse || f.klasse===fKlasse) &&
+    (!fBaugroesse || f.baugroesse===fBaugroesse)
+  );
+
+  if(!STATE.fuseLibrary.length){
+    host.appendChild(el("p", { class:"hinweis", text:"Die Sicherungsbibliothek ist leer. Bitte weiter unten Datensätze anlegen/importieren oder die große Vorlagen-Datenbank laden." }));
+    return;
+  }
+  if(!stromStr || !isFinite(strom) || strom<=0){
+    host.appendChild(el("p", { class:"hinweis", text:"Bitte einen Strom eingeben." }));
+    return;
+  }
+  host.appendChild(el("p", { class:"grosstreffer", text:`${passend.length} von ${STATE.fuseLibrary.length} Sicherungen entsprechen den gewählten Filtern.` }));
+
+  const ausgewertet = passend.map(f=>{
+    const res = findeZeitFuerStrom(f.kennlinie, strom);
+    return { f, res };
+  });
+  // Sortierung: zuerst auswertbare Ergebnisse nach Auslösezeit aufsteigend, dann Sicherungen ohne Kennlinie
+  ausgewertet.sort((a,b)=>{
+    const ta = a.res.error ? Infinity : a.res.t_s, tb = b.res.error ? Infinity : b.res.t_s;
+    return ta - tb;
+  });
+
+  ausgewertet.forEach(({f,res})=>{
+    let cls, text;
+    if(res.error){
+      cls = "unklar";
+      text = res.error;
+    } else if(res.t_s <= 3600){
+      cls = "trip";
+      text = `Würde nach ca. ${fmt(res.t_s,3)} s auslösen${res.extrapolated?" (⚠ extrapoliert, außerhalb hinterlegter Stützstellen)":""}.`;
+    } else {
+      cls = "notrip";
+      text = `Würde bei diesem Strom voraussichtlich NICHT (bzw. erst nach sehr langer Zeit, > 1 h) auslösen${res.extrapolated?" (⚠ extrapoliert)":""}.`;
+    }
+    const card = el("div", { class:"einfach-ergebnis-card "+cls });
+    card.appendChild(el("div", { class:"titlerow" }, [
+      el("span", { text: `${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse} ${f.In_A?f.In_A+"A":(f.Sr_kVA?f.Sr_kVA+"kVA":"")}` }),
+      el("span", { text: cls==="trip"?"würde auslösen":(cls==="notrip"?"würde nicht auslösen":"unklar") })
+    ]));
+    card.appendChild(el("div", { class:"small", text }));
+    host.appendChild(card);
+  });
+  if(!ausgewertet.length){
+    host.appendChild(el("p", { class:"hinweis", text:"Keine Sicherung entspricht den gewählten Filtern." }));
+  }
+}
+["ef_strom","ef_hersteller","ef_klasse","ef_baugroesse"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", refreshEinfachModus);
+  document.getElementById(id).addEventListener("change", refreshEinfachModus);
 });
 
 function showFuseEditor(fuse){
@@ -1885,10 +2132,11 @@ function applyCase(data){
 document.getElementById("btnResetAll").addEventListener("click", ()=>{
   if(!confirm("Wirklich alle Eingaben, die Sicherungsbibliothek und die Anlagentopologie zurücksetzen?")) return;
   localStorage.removeItem("nhrechner_state_v1");
-  STATE = { header:{}, netzModus:"A", netz:{}, topologie: neueTopologie(), selectedNodeId:null, fuseLibrary:[], logoBase64:null };
+  STATE = { header:{}, netzModus:"A", netz:{}, topologie: neueTopologie(), selectedNodeId:null, fuseLibrary:[], logoBase64:null, appMode:STATE.appMode };
   STATE.selectedNodeId = STATE.topologie.root.id;
   document.getElementById("f_kunde").value=""; document.getElementById("f_anlage").value=""; document.getElementById("f_anlagenteil").value="";
   document.getElementById("f_pruefer").value=""; document.getElementById("f_datum").value=""; document.getElementById("f_netzform").value="TN-S";
+  document.getElementById("ef_strom").value="";
   renderFuseList(); renderTopoDiagram(); renderNodeEditor(); recompute();
 });
 
@@ -1940,6 +2188,8 @@ function init(){
     STATE.topologie.root.kinder.push(hv);
     STATE.selectedNodeId = hv.id;
   }
+  if(!STATE.appMode) STATE.appMode = "experte";
+  applyAppMode();
   renderFuseList();
   renderTopoDiagram();
   renderNodeEditor();

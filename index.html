@@ -10,7 +10,7 @@
    ============================================================ */
 :root{
   --bg:#f2f4f6; --panel:#ffffff; --ink:#101418; --ink-soft:#3c454d;
-  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff;
+  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff; --accent-hover-bg:rgba(10,95,180,.14);
   --ok-bg:#d6f3dc; --ok-ink:#0d5c22; --ok-line:#1e9a41;
   --bad-bg:#fbdada; --bad-ink:#7a0e0e; --bad-line:#c62828;
   --na-bg:#e8e8e8; --na-ink:#444; --na-line:#999;
@@ -23,7 +23,7 @@
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#14181b; --panel:#1e2327; --ink:#f0f2f4; --ink-soft:#c3cad0;
-    --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f;
+    --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f; --accent-hover-bg:rgba(77,163,255,.18);
     --ok-bg:#123a1c; --ok-ink:#8be09e; --ok-line:#1e9a41;
     --bad-bg:#3d1414; --bad-ink:#ff9d9d; --bad-line:#c62828;
     --na-bg:#2a2e31; --na-ink:#b7bcc0; --na-line:#666;
@@ -56,10 +56,11 @@ input,select,textarea{
 label{display:flex; align-items:center; gap:.35em; font-size:.85rem; color:var(--ink-soft); margin-bottom:.2em; font-weight:600;}
 button.infobtn{
   display:inline-flex; align-items:center; justify-content:center;
-  min-width:26px; min-height:26px; width:26px; height:26px; padding:0; border-radius:50%;
-  background:var(--accent); color:var(--accent-ink); border:none; font-size:.8rem; font-weight:800;
-  flex:0 0 auto; line-height:1;
+  min-width:22px; min-height:22px; width:22px; height:22px; padding:0; border-radius:50%;
+  background:transparent; color:var(--accent); border:none; font-size:.85rem; font-weight:800;
+  flex:0 0 auto; line-height:1; margin-left:2px;
 }
+button.infobtn:hover, button.infobtn:focus-visible{ background:var(--accent-hover-bg); }
 .info-popover{
   position:fixed; z-index:900; max-width:min(360px, 90vw); background:var(--panel); color:var(--ink);
   border:1px solid var(--accent); border-radius:10px; padding:.8em 1em; box-shadow:0 6px 24px rgba(0,0,0,.3);

@@ -113,6 +113,8 @@ textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
 .dragHandle{cursor:grab; user-select:none; font-size:1.3rem; padding:0 .3em;}
 .pv-only{display:none;}
 .ac-only{display:block;}
+#topoDiagramWrap{overflow-x:auto; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
+#topoDiagram{max-width:100%; height:auto; display:block; margin:0 auto;}
 footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem; color:var(--ink-soft);}
 
 /* Print stylesheet */
@@ -230,18 +232,28 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
 </section>
 
-<section class="panel">
-  <h2>3. Leitungsstrecke (kaskadiert)</h2>
-  <div id="strecke"></div>
-  <button id="btnAddAbschnitt">+ Abschnitt hinzufügen</button>
-  <p class="hinweis">Jeder Knoten (Ende eines Abschnitts) wird vollständig bewertet: Ik3max, Ik2, Ik1min, ZS, ip.</p>
+<section class="panel span2">
+  <h2>3. Anlagentopologie</h2>
+  <p class="hinweis">Baumstruktur der Anlage: Netzeinspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise
+  (beliebig verschachtelbar), z. B. Netz/Trafo → HAK → Hauptleitung → HV → Steigleitung → UV → Endstromkreis (Abschnitt 5.3).
+  Auf einen Knoten im Diagramm tippen/klicken, um ihn auszuwählen — darunter erscheinen dann seine Leitungsdaten und die
+  Sicherungszuordnung zum Bearbeiten.</p>
+  <div class="row no-print">
+    <div class="field"><button id="btnAddHV">+ Hauptverteilung</button></div>
+    <div class="field"><button id="btnAddUV">+ Unterverteilung</button></div>
+    <div class="field"><button id="btnAddEK">+ Endstromkreis</button></div>
+    <div class="field"><button class="danger" id="btnDelNode">Ausgewählten Knoten löschen</button></div>
+  </div>
+  <div id="topoDiagramWrap"><svg id="topoDiagram"></svg></div>
+  <div id="nodeEditor"></div>
 </section>
 
 <section class="panel span2">
-  <h2>4. Sicherungsbibliothek &amp; Auswahl</h2>
+  <h2>4. Sicherungsbibliothek</h2>
   <p class="hinweis">Kennliniendaten sind herstellerspezifisch und urheberrechtlich geschützt — es sind
   <strong>keine</strong> Werksdaten vorbefüllt. Bitte eigene Datensätze anlegen oder als JSON importieren
-  (Struktur siehe Lastenheft Abschnitt 4.4).</p>
+  (Struktur siehe Lastenheft Abschnitt 4.4). Die Zuordnung einer Sicherung zu einer Leitung erfolgt in den
+  Einstellungen des jeweiligen Knotens in Abschnitt 3.</p>
   <div class="row">
     <div class="field"><label>JSON-Import Sicherungsbibliothek</label><input type="file" id="fuseImportFile" accept="application/json"></div>
     <div class="field"><label>&nbsp;</label><button id="btnExportFuses">Bibliothek exportieren (JSON)</button></div>
@@ -250,19 +262,6 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   <div id="fuseEditorHost"></div>
   <h3>Bibliothek (<span id="fuseCount">0</span> Datensätze)</h3>
   <div id="fuseList"></div>
-
-  <h3>Zuordnung zu Knoten</h3>
-  <div class="row">
-    <div class="field"><label>Baugröße</label><select id="sel_baugroesse"></select></div>
-    <div class="field"><label>Betriebsklasse</label><select id="sel_klasse"></select></div>
-    <div class="field"><label>Bemessungsspannung Un [V]</label><select id="sel_un"></select></div>
-    <div class="field"><label>Bemessungsstrom In [A] (bzw. In M Ich / kVA bei gTr)</label><select id="sel_in"></select></div>
-  </div>
-  <div class="row">
-    <div class="field"><label>Zuordnung zu Knoten (Strecke)</label><select id="sel_node"></select></div>
-    <div class="field"><label>&nbsp;</label><button class="primary" id="btnAssignFuse">Sicherung diesem Knoten zuordnen</button></div>
-  </div>
-  <div id="fuseSelWarn"></div>
 </section>
 
 </div>
@@ -324,9 +323,10 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
    ============================================================================================ */
 "use strict";
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 const CHANGELOG = [
-  { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." }
+  { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." },
+  { v: "1.1.0", datum: "2026-07-26", text: "Anlagentopologie (Baumstruktur Einspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise) mit visuellem SVG-Diagramm ersetzt die frühere lineare Leitungsstrecke. Leitungsdaten und Sicherungszuordnung werden je Knoten in dessen Einstellungen bearbeitet (Klick/Tipp auf den Knoten im Diagramm). Automatische Migration älterer gespeicherter Berechnungsfälle." }
 ];
 
 /* =========================================================================
@@ -413,6 +413,47 @@ function neueSicherungsvorlage(){
   };
 }
 
+// ---- Anlagentopologie: Baumstruktur Einspeisung -> Hauptverteilung(en) -> Unterverteilung(en)/Endstromkreise
+// (Abschnitt 5.3 Lastenheft: Netz/Trafo -> HAK -> Hauptleitung -> HV -> Steigleitung -> UV -> Endstromkreis) ----
+let ID_COUNTER = 0;
+function neueId(prefix){ return prefix+"_"+Date.now().toString(36)+"_"+(ID_COUNTER++); }
+
+function neueLeitung(){
+  return { l_m:10, A_L:16, A_N:16, A_PE:16, material:"Cu", verlegeart:"", n_parallel:1, isoliert:"PVC",
+           x_strich:0.08, Iz_A:null, stossstromfestigkeit_kA:null, stromkreisart:"Endstromkreis" };
+}
+// Knotentypen: 'einspeisung' (Wurzel, einmalig) | 'hauptverteilung' | 'unterverteilung' | 'endstromkreis' (Blatt)
+// node.leitung beschreibt die diesen Knoten versorgende Leitung (null nur bei 'einspeisung').
+// node.fuseId verweist auf die Sicherung in der Bibliothek, die GENAU DIESE Leitung schützt
+// (sie sitzt physisch im übergeordneten Verteiler).
+function neuerKnoten(typ, name){
+  return { id:neueId("n"), typ, name, leitung: typ==="einspeisung" ? null : neueLeitung(), fuseId:null, kinder:[] };
+}
+function neueTopologie(){
+  return { root: neuerKnoten("einspeisung", "Netzeinspeisung") };
+}
+function knotenTypLabel(typ){
+  return { einspeisung:"Einspeisung", hauptverteilung:"Hauptverteilung", unterverteilung:"Unterverteilung", endstromkreis:"Endstromkreis" }[typ] || typ;
+}
+function findNode(root, id){
+  if(root.id===id) return root;
+  for(const k of (root.kinder||[])){ const f=findNode(k,id); if(f) return f; }
+  return null;
+}
+function findParent(root, id){
+  for(const k of (root.kinder||[])){
+    if(k.id===id) return root;
+    const f=findParent(k,id); if(f) return f;
+  }
+  return null;
+}
+function countKnotenOfTyp(node, typ){
+  let c = node.typ===typ ? 1 : 0;
+  (node.kinder||[]).forEach(k=> c+=countKnotenOfTyp(k, typ));
+  return c;
+}
+function countAlleKnoten(node){ let c=1; (node.kinder||[]).forEach(k=>c+=countAlleKnoten(k)); return c; }
+
 /* =========================================================================
    2. BERECHNUNGSKERN — reine Funktionen, kein DOM-Zugriff
    ========================================================================= */
@@ -488,17 +529,9 @@ function stosskurzschlussstrom_kA({ R, X, Ik3_kA_val }){
   return { kappa, ip_kA: ip };
 }
 
-/* ---- Berechnung der gesamten kaskadierten Strecke ----------------------------------------
-   netz: { modus:'A'|'B'|'C', ...params }
-   abschnitte: [{ name, l_m, A_L, A_N, A_PE, material, verlegeart, n_parallel, x_strich, isoliert:'PVC'|'VPE', fuse:null }]
-   Gibt Array von Knotenergebnissen zurück (Knoten 0 = Einspeisepunkt / Trafo-Sammelschiene). */
-function berechneStrecke(input){
-  const { netz, abschnitte, c_max, netzform } = input;
-  const cmin = NORM.c_min;
-  const U0 = (netz.Un_V ?? 400) / Math.sqrt(3);
-
-  // Quellimpedanz (Netz +ggf. Transformator), gilt konstant für alle nachgelagerten Knoten,
-  // temperaturunabhängig (Quellimpedanz wird nicht mit Leitertemperatur korrigiert).
+/* ---- Quellimpedanz (Netz +ggf. Transformator) ---------------------------------------------
+   Gilt konstant für alle Knoten der Topologie, temperaturunabhängig (keine Leitertemperatur-Korrektur). */
+function berechneQuellimpedanz(netz, c_max){
   let Rq=0, Xq=0, KT=1, transformatorInfo=null, netzInfo=null;
   if(netz.modus === "A"){
     const z = modusA_impedanz({ Ik3_kA:netz.Ik3_kA, RX:netz.RX, c:c_max, Un_V:netz.Un_V });
@@ -514,43 +547,51 @@ function berechneStrecke(input){
     const R = X*RX;
     Rq=R; Xq=X; netzInfo = { R, X, Z:netz.ZS_gemessen_Ohm, gemessen:true };
   }
+  return { Rq, Xq, KT, netzInfo, transformatorInfo };
+}
 
-  const knoten = [];
-  // Knoten 0: Einspeisepunkt / Sammelschiene (keine Leitung, keine PE-Reduktion)
-  let R1max=Rq, X1max=Xq;      // 20°C-Phasenimpedanz, kumuliert
-  let R1min=Rq, X1min=Xq;      // Betriebstemperatur-Phasenimpedanz (bei Knoten 0 = Quelle, keine Temp-Korrektur)
-  let RPEmin=0, XPEmin=0;      // PE-Impedanz (nur Leitungen, Quelle hat keinen PE-Beitrag)
+/* ---- Rekursive Berechnung der gesamten Anlagentopologie (Abschnitt 5.3) -------------------
+   netz: { modus:'A'|'B'|'C', ...params }; root: Wurzelknoten (Typ 'einspeisung', s. neuerKnoten()).
+   Jeder Kindknoten trägt seine eigene, ihn versorgende Leitung; Impedanzen werden entlang des
+   Pfades von der Wurzel bis zum jeweiligen Knoten aufsummiert. Gibt eine flache Liste aller
+   Knotenergebnisse (inkl. Referenz auf Knoten und Elternknoten) sowie den Baum selbst zurück. */
+function berechneTopologie(input){
+  const { netz, c_max, root } = input;
+  const cmin = NORM.c_min;
+  const U0 = (netz.Un_V ?? 400) / Math.sqrt(3);
+  const quelle = berechneQuellimpedanz(netz, c_max);
+  const flatList = [];
 
-  function knotenErgebnis(name, R1max,X1max,R1min,X1min,RPEmin,XPEmin, abschnittMeta){
+  function walk(node, accum, depth, parentNode){
+    let { R1max, X1max, R1min, X1min, RPEmin, XPEmin } = accum;
+    if(node.leitung){
+      const l = node.leitung;
+      const theta_end = l.isoliert === "VPE" ? NORM.theta_end_vpe : NORM.theta_end_pvc;
+      const lMax = leitungImpedanz({ l_m:l.l_m, A_mm2:l.A_L, material:l.material, n_parallel:l.n_parallel, theta_C:20, x_strich:l.x_strich });
+      const lMin = leitungImpedanz({ l_m:l.l_m, A_mm2:l.A_L, material:l.material, n_parallel:l.n_parallel, theta_C:theta_end, x_strich:l.x_strich });
+      const lPE  = leitungImpedanz({ l_m:l.l_m, A_mm2:l.A_PE, material:l.material, n_parallel:l.n_parallel, theta_C:theta_end, x_strich:l.x_strich });
+      R1max += lMax.R; X1max += lMax.X;
+      R1min += lMin.R; X1min += lMin.X;
+      RPEmin += lPE.R; XPEmin += lPE.X;
+    }
     const Ik3max = ik3_kA({ c:c_max, Un_V:netz.Un_V, R:R1max, X:X1max });
     const Ik2 = ik2_kA(Ik3max);
     const RS_min = R1min+RPEmin, XS_min = X1min+XPEmin;
     const Ik1min = ik1_A({ c:cmin, U0_V:U0, R_S:RS_min, X_S:XS_min });
     const stoss = stosskurzschlussstrom_kA({ R:R1max, X:X1max, Ik3_kA_val:Ik3max });
-    return {
-      name, R1max, X1max, R1min, X1min, RPEmin, XPEmin, RS_min, XS_min,
+    const erg = {
+      id: node.id, name: node.name, typ: node.typ, depth, node, parentNode,
+      R1max, X1max, R1min, X1min, RPEmin, XPEmin, RS_min, XS_min,
       Ik3max_kA: Ik3max, Ik2_kA: Ik2, Ik1min_A: Ik1min, ZS_min_Ohm: Math.sqrt(RS_min*RS_min+XS_min*XS_min),
-      kappa: stoss.kappa, ip_kA: stoss.ip_kA,
-      abschnitt: abschnittMeta || null, fuse: null
+      kappa: stoss.kappa, ip_kA: stoss.ip_kA
     };
+    flatList.push(erg);
+    (node.kinder||[]).forEach(kind => walk(kind, { R1max, X1max, R1min, X1min, RPEmin, XPEmin }, depth+1, node));
+    return erg;
   }
 
-  knoten.push(knotenErgebnis("Einspeisung"+(transformatorInfo?" (Trafo-Sammelschiene)":""), R1max,X1max,R1min,X1min,RPEmin,XPEmin, { netzInfo, transformatorInfo }));
-
-  for(const ab of abschnitte){
-    const theta_end = ab.isoliert === "VPE" ? NORM.theta_end_vpe : NORM.theta_end_pvc;
-    const lPhase = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_L, material:ab.material, n_parallel:ab.n_parallel, theta_C:20, x_strich:ab.x_strich });
-    const lPhaseHot = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_L, material:ab.material, n_parallel:ab.n_parallel, theta_C:theta_end, x_strich:ab.x_strich });
-    const lPE_hot = leitungImpedanz({ l_m:ab.l_m, A_mm2:ab.A_PE, material:ab.material, n_parallel:ab.n_parallel, theta_C:theta_end, x_strich:ab.x_strich });
-
-    R1max += lPhase.R;  X1max += lPhase.X;
-    R1min += lPhaseHot.R; X1min += lPhaseHot.X;
-    RPEmin += lPE_hot.R; XPEmin += lPE_hot.X;
-
-    knoten.push(knotenErgebnis(ab.name || ("Abschnitt "+knoten.length), R1max,X1max,R1min,X1min,RPEmin,XPEmin, { ab, theta_end }));
-  }
-
-  return { knoten, quell:{Rq,Xq,KT,netzInfo,transformatorInfo} };
+  walk(root, { R1max:quelle.Rq, X1max:quelle.Xq, R1min:quelle.Rq, X1min:quelle.Xq, RPEmin:0, XPEmin:0 }, 0, null);
+  return { flatList, root, quelle };
 }
 
 /* =========================================================================
@@ -833,24 +874,25 @@ function runTestSuite(){
 
   // Test 4: Ik1min sinkt, wenn PE-Querschnitt gegenüber L reduziert wird
   {
-    const strecke1 = berechneStrecke({
-      netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S",
-      abschnitte:[{ name:"K1", l_m:50, A_L:10, A_N:10, A_PE:10, material:"Cu", n_parallel:1, x_strich:0.08, isoliert:"PVC" }]
-    });
-    const streckeReduziert = berechneStrecke({
-      netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S",
-      abschnitte:[{ name:"K1", l_m:50, A_L:10, A_N:10, A_PE:6, material:"Cu", n_parallel:1, x_strich:0.08, isoliert:"PVC" }]
-    });
-    const ik1_gleich = strecke1.knoten[1].Ik1min_A;
-    const ik1_reduziert = streckeReduziert.knoten[1].Ik1min_A;
+    function baueTestTopologie(A_PE){
+      const root = neuerKnoten("einspeisung", "E");
+      const k1 = neuerKnoten("endstromkreis", "K1");
+      k1.leitung = Object.assign(neueLeitung(), { l_m:50, A_L:10, A_N:10, A_PE, material:"Cu", n_parallel:1, x_strich:0.08, isoliert:"PVC" });
+      root.kinder.push(k1);
+      return root;
+    }
+    const topo1 = berechneTopologie({ netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, root: baueTestTopologie(10) });
+    const topoReduziert = berechneTopologie({ netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, root: baueTestTopologie(6) });
+    const ik1_gleich = topo1.flatList[1].Ik1min_A;
+    const ik1_reduziert = topoReduziert.flatList[1].Ik1min_A;
     assertTrue("Ik1min sinkt bei reduziertem PE-Querschnitt", ik1_reduziert < ik1_gleich, `Ik1min(PE=10)=${ik1_gleich.toFixed(1)}A, Ik1min(PE=6)=${ik1_reduziert.toFixed(1)}A`);
   }
 
   // Test 5: aM liefert Überlastprüfung "nicht anwendbar" statt "bestanden"
   {
     const fuse = Object.assign(neueSicherungsvorlage(), { klasse:"aM", In_A:100, If_A:160, Icn_kA:120 });
-    const strecke = berechneStrecke({ netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, netzform:"TN-S", abschnitte:[] });
-    const bew = bewerteKnoten({ knotenErg:strecke.knoten[0], fuse, material:"Cu", A_L:35, isoliert:"PVC", Iz_A:120, geforderteZeit_s:0.4 });
+    const topo = berechneTopologie({ netz:{ modus:"A", Ik3_kA:20, RX:0.1, Un_V:400 }, c_max:1.1, root: neuerKnoten("einspeisung","E") });
+    const bew = bewerteKnoten({ knotenErg:topo.flatList[0], fuse, material:"Cu", A_L:35, isoliert:"PVC", Iz_A:120, geforderteZeit_s:0.4 });
     assertTrue("aM: Überlastschutz = 'nicht anwendbar'", bew.ueberlastschutz.status==="na" && bew.ueberlastschutz.warnung===true, JSON.stringify(bew.ueberlastschutz));
   }
 
@@ -891,16 +933,66 @@ function runTestSuite(){
    8. UI-SCHICHT (DOM)
    ========================================================================= */
 let STATE = {
-  header: {}, netzModus:"A", netz:{}, abschnitte:[], fuseLibrary:[], nodeAssignments:{}, // nodeIndex -> fuse-id
-  nodeParams:{}, // nodeIndex -> {Iz_A, geforderteZeit_s, material, isoliert, stossstromfestigkeit_kA}
-  logoBase64:null
+  header: {}, netzModus:"A", netz:{}, topologie: neueTopologie(), selectedNodeId:null,
+  fuseLibrary:[], logoBase64:null
 };
+STATE.selectedNodeId = STATE.topologie.root.id;
 let TESTOUT = null;
+// Zwischenspeicher der zuletzt berechneten Knotenergebnisse (Anzeige-Cache, NICHT Teil von STATE/
+// localStorage -- erg.node/erg.parentNode referenzieren die Baumknoten und dürfen dort nicht
+// gespeichert werden, sonst entsteht ein zirkulärer Verweis, den JSON.stringify nicht auflösen kann).
+let ERG_CACHE = new Map();
+
+function ensureFuseId(f){ if(!f.id) f.id = neueId("f"); return f; }
+function fuseById(id){ return id!=null ? STATE.fuseLibrary.find(f=>f.id===id) : null; }
+function clearFuseReferences(node, fuseId){
+  if(node.fuseId===fuseId) node.fuseId=null;
+  (node.kinder||[]).forEach(k=>clearFuseReferences(k, fuseId));
+}
+// Migration aus dem alten, flachen Streckenformat (Version < 1.1.0) in die Baumtopologie.
+function migriereAbschnitteZuTopologie(abschnitte, nodeAssignments){
+  const root = neuerKnoten("einspeisung", "Netzeinspeisung");
+  let parent = root;
+  (abschnitte||[]).forEach((ab, idx)=>{
+    const typ = idx===abschnitte.length-1 ? "endstromkreis" : (idx===0 ? "hauptverteilung" : "unterverteilung");
+    const node = neuerKnoten(typ, ab.name || ("Knoten "+(idx+1)));
+    node.leitung = { l_m:ab.l_m, A_L:ab.A_L, A_N:ab.A_N, A_PE:ab.A_PE, material:ab.material,
+      verlegeart:ab.verlegeart||"", n_parallel:ab.n_parallel||1, isoliert:ab.isoliert||"PVC",
+      x_strich:ab.x_strich||0.08, Iz_A:ab.Iz_A??null, stossstromfestigkeit_kA:ab.stossstromfestigkeit_kA??null,
+      stromkreisart:ab.stromkreisart||"Endstromkreis" };
+    if(nodeAssignments && nodeAssignments[idx+1]!=null) node._legacyFuseIndex = nodeAssignments[idx+1];
+    parent.kinder.push(node);
+    parent = node;
+  });
+  if(nodeAssignments && nodeAssignments[0]!=null) root._legacyFuseIndex = nodeAssignments[0];
+  return root;
+}
+function loeseLegacyFuseRefsAuf(node){
+  if(node._legacyFuseIndex!=null){
+    const f = STATE.fuseLibrary[node._legacyFuseIndex];
+    node.fuseId = f ? f.id : null;
+    delete node._legacyFuseIndex;
+  }
+  (node.kinder||[]).forEach(loeseLegacyFuseRefsAuf);
+}
 
 function loadState(){
   try{
     const raw = localStorage.getItem("nhrechner_state_v1");
-    if(raw){ const parsed = JSON.parse(raw); Object.assign(STATE, parsed); }
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(!parsed.topologie && parsed.abschnitte){
+        parsed.topologie = { root: migriereAbschnitteZuTopologie(parsed.abschnitte, parsed.nodeAssignments||{}) };
+      }
+      delete parsed.abschnitte; delete parsed.nodeAssignments; delete parsed.nodeParams;
+      Object.assign(STATE, parsed);
+      if(!STATE.topologie || !STATE.topologie.root) STATE.topologie = neueTopologie();
+      STATE.fuseLibrary.forEach(ensureFuseId);
+      loeseLegacyFuseRefsAuf(STATE.topologie.root);
+      if(!STATE.selectedNodeId || !findNode(STATE.topologie.root, STATE.selectedNodeId)){
+        STATE.selectedNodeId = STATE.topologie.root.id;
+      }
+    }
   }catch(e){ console.warn("State konnte nicht geladen werden", e); }
 }
 function saveState(){
@@ -951,55 +1043,227 @@ document.getElementById("modeBar").addEventListener("click", (ev)=>{
   recompute();
 });
 
-/* ---- Strecke: Abschnittskarten ---- */
-function renderStrecke(){
-  const host = document.getElementById("strecke");
-  host.innerHTML = "";
-  STATE.abschnitte.forEach((ab, idx)=>{
-    const card = el("div", { class:"card" });
-    card.appendChild(el("div", { class:"card-head" }, [
-      el("strong", { text: "Abschnitt "+(idx+1) }),
-      el("div", {}, [
-        el("button", { text:"↑", title:"nach oben" , onclick:null}),
-      ])
-    ]));
-    const up = el("button", { text:"↑" }); up.addEventListener("click", ()=>{ if(idx>0){ [STATE.abschnitte[idx-1],STATE.abschnitte[idx]]=[STATE.abschnitte[idx],STATE.abschnitte[idx-1]]; renderStrecke(); recompute(); } });
-    const down = el("button", { text:"↓" }); down.addEventListener("click", ()=>{ if(idx<STATE.abschnitte.length-1){ [STATE.abschnitte[idx+1],STATE.abschnitte[idx]]=[STATE.abschnitte[idx],STATE.abschnitte[idx+1]]; renderStrecke(); recompute(); } });
-    const del = el("button", { text:"✕ löschen", class:"danger" }); del.addEventListener("click", ()=>{ STATE.abschnitte.splice(idx,1); renderStrecke(); recompute(); });
-    card.querySelector(".card-head div").append(up, down, del);
-
-    const row1 = el("div", { class:"row" });
-    const fName = mkField("Bezeichnung", "text", ab.name, v=>{ab.name=v; recompute();});
-    const fLen = mkField("Länge l [m]", "number", ab.l_m, v=>{ab.l_m=parseFloat(v)||0; recompute();});
-    const fMat = mkSelectField("Material", ["Cu","Al"], ab.material, v=>{ab.material=v; recompute();});
-    row1.append(fName, fLen, fMat);
-
-    const row2 = el("div", { class:"row" });
-    const fAL = mkField("Querschnitt L [mm²]", "number", ab.A_L, v=>{ab.A_L=parseFloat(v)||0; recompute();});
-    const fAN = mkField("Querschnitt N [mm²]", "number", ab.A_N, v=>{ab.A_N=parseFloat(v)||0; recompute();});
-    const fAPE = mkField("Querschnitt PE [mm²]", "number", ab.A_PE, v=>{ab.A_PE=parseFloat(v)||0; recompute();});
-    row2.append(fAL, fAN, fAPE);
-
-    const row3 = el("div", { class:"row" });
-    const fVerlege = mkField("Verlegeart (Dokumentation, DIN VDE 0298-4)", "text", ab.verlegeart, v=>{ab.verlegeart=v;});
-    const fN = mkField("Parallele Kabel n", "number", ab.n_parallel, v=>{ab.n_parallel=parseInt(v)||1; recompute();});
-    const fIso = mkSelectField("Isolierung (Endtemperatur Ik_min)", ["PVC","VPE"], ab.isoliert, v=>{ab.isoliert=v; recompute();});
-    row3.append(fVerlege, fN, fIso);
-
-    const row4 = el("div", { class:"row" });
-    const fX = mkField("Reaktanzbelag x' [Ω/km]", "number", ab.x_strich, v=>{ab.x_strich=parseFloat(v)||0.08; recompute();});
-    const fIz = mkField("Belastbarkeit Iz der Leitung [A] (DIN VDE 0298-4)", "number", ab.Iz_A, v=>{ab.Iz_A=parseFloat(v)||null; recompute();});
-    const fStoss = mkField("Stoßstromfestigkeit Verteilung [kA] (optional)", "number", ab.stossstromfestigkeit_kA, v=>{ab.stossstromfestigkeit_kA=parseFloat(v)||null; recompute();});
-    row4.append(fX, fIz, fStoss);
-
-    const row5 = el("div", { class:"row" });
-    const fZeit = mkSelectField("Stromkreisart (Abschaltzeit)", ["Endstromkreis","Verteilung"], ab.stromkreisart||"Endstromkreis", v=>{ab.stromkreisart=v; recompute();});
-    row5.append(fZeit);
-
-    card.append(row1,row2,row3,row4,row5);
-    host.appendChild(card);
-  });
+/* ---- Anlagentopologie: Baumaufbau, SVG-Diagramm, Knoteneinstellungen ---- */
+function addNode(typ){
+  const parent = findNode(STATE.topologie.root, STATE.selectedNodeId) || STATE.topologie.root;
+  if(parent.typ === "endstromkreis"){
+    alert("Ein Endstromkreis ist ein Blattknoten und kann keine weiteren Knoten enthalten. Bitte zuerst eine Verteilung (oder die Einspeisung) auswählen.");
+    return;
+  }
+  const label = typ==="hauptverteilung" ? "HV" : (typ==="unterverteilung" ? "UV" : "EK");
+  const nummer = countKnotenOfTyp(STATE.topologie.root, typ)+1;
+  const node = neuerKnoten(typ, label+nummer);
+  parent.kinder.push(node);
+  STATE.selectedNodeId = node.id;
+  recompute();
+  renderNodeEditor();
 }
+function deleteSelectedNode(){
+  if(STATE.selectedNodeId === STATE.topologie.root.id){ alert("Die Einspeisung ist die Wurzel der Anlage und kann nicht gelöscht werden."); return; }
+  const parent = findParent(STATE.topologie.root, STATE.selectedNodeId);
+  const node = findNode(STATE.topologie.root, STATE.selectedNodeId);
+  if(!parent || !node) return;
+  const nachgelagert = countAlleKnoten(node)-1;
+  if(nachgelagert>0 && !confirm(`Dieser Knoten enthält ${nachgelagert} nachgelagerte Knoten, die mit gelöscht werden. Fortfahren?`)) return;
+  parent.kinder = parent.kinder.filter(k=>k.id!==node.id);
+  STATE.selectedNodeId = parent.id;
+  recompute();
+  renderNodeEditor();
+}
+function selectNode(id){
+  STATE.selectedNodeId = id;
+  renderTopoDiagram();
+  renderNodeEditor();
+  saveState();
+}
+document.getElementById("btnAddHV").addEventListener("click", ()=>addNode("hauptverteilung"));
+document.getElementById("btnAddUV").addEventListener("click", ()=>addNode("unterverteilung"));
+document.getElementById("btnAddEK").addEventListener("click", ()=>addNode("endstromkreis"));
+document.getElementById("btnDelNode").addEventListener("click", deleteSelectedNode);
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs){
+  const e = document.createElementNS(SVG_NS, tag);
+  if(attrs) for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function layoutTopologie(root){
+  const positions = new Map();
+  let maxDepth = 0;
+  function countLeaves(node){ return (!node.kinder||node.kinder.length===0) ? 1 : node.kinder.reduce((s,k)=>s+countLeaves(k),0); }
+  function place(node, depth, xStart, xEnd){
+    maxDepth = Math.max(maxDepth, depth);
+    const kids = node.kinder||[];
+    let x;
+    if(kids.length===0){
+      x = (xStart+xEnd)/2;
+    } else {
+      const total = countLeaves(node);
+      let cursor = xStart;
+      const centers = [];
+      kids.forEach(k=>{
+        const w = (xEnd-xStart)*(countLeaves(k)/total);
+        centers.push(place(k, depth+1, cursor, cursor+w));
+        cursor += w;
+      });
+      x = centers.reduce((a,b)=>a+b,0)/centers.length;
+    }
+    positions.set(node.id, { x, y:depth });
+    return x;
+  }
+  place(root, 0, 0, 1);
+  return { positions, maxDepth, leafCount: countLeaves(root) };
+}
+function renderTopoDiagram(){
+  const svg = document.getElementById("topoDiagram");
+  svg.innerHTML = "";
+  const root = STATE.topologie.root;
+  const { positions, maxDepth, leafCount } = layoutTopologie(root);
+  const boxW=150, boxH=64, gapY=64, marginX=20, marginY=20;
+  const totalW = Math.max(1, leafCount) * (boxW+30) + marginX*2;
+  const totalH = (maxDepth+1)*(boxH+gapY) + marginY*2 - gapY;
+  svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+
+  function px(node){
+    const p = positions.get(node.id);
+    return { cx: marginX + p.x*(totalW-marginX*2), cy: marginY + p.y*(boxH+gapY) + boxH/2 };
+  }
+  const colors = { einspeisung:"#607d8b", hauptverteilung:"#0a5fb4", unterverteilung:"#00897b", endstromkreis:"#43a047" };
+
+  function drawEdges(node){
+    const p0 = px(node);
+    (node.kinder||[]).forEach(k=>{
+      const p1 = px(k);
+      const path = svgEl("path", {
+        d:`M ${p0.cx} ${p0.cy+boxH/2} C ${p0.cx} ${p0.cy+boxH/2+gapY/2}, ${p1.cx} ${p1.cy-boxH/2-gapY/2}, ${p1.cx} ${p1.cy-boxH/2}`,
+        fill:"none", stroke:"#8892a0", "stroke-width":"2"
+      });
+      svg.appendChild(path);
+      if(k.leitung){
+        const label = svgEl("text", { x:(p0.cx+p1.cx)/2+4, y:(p0.cy+p1.cy)/2, "font-size":"10", fill:"#8892a0" });
+        label.textContent = `${k.leitung.l_m} m, ${k.leitung.A_L} mm²`;
+        svg.appendChild(label);
+      }
+      drawEdges(k);
+    });
+  }
+  drawEdges(root);
+
+  function drawNode(node){
+    const p = px(node);
+    const selected = node.id === STATE.selectedNodeId;
+    const g = svgEl("g", { style:"cursor:pointer;" });
+    g.appendChild(svgEl("rect", { x:p.cx-boxW/2, y:p.cy-boxH/2, width:boxW, height:boxH, rx:10,
+      fill: colors[node.typ]||"#888", stroke: selected?"#ffcc00":"#00000030", "stroke-width": selected?4:1 }));
+    const t1 = svgEl("text", { x:p.cx, y:p.cy-8, "text-anchor":"middle", "font-size":"13", "font-weight":"700", fill:"#fff" });
+    t1.textContent = node.name; g.appendChild(t1);
+    const t2 = svgEl("text", { x:p.cx, y:p.cy+8, "text-anchor":"middle", "font-size":"10", fill:"#ffffffd0" });
+    t2.textContent = knotenTypLabel(node.typ); g.appendChild(t2);
+    const erg = ERG_CACHE.get(node.id);
+    if(erg){
+      const t3 = svgEl("text", { x:p.cx, y:p.cy+22, "text-anchor":"middle", "font-size":"9", fill:"#ffffffd0" });
+      t3.textContent = `Ik3max ${fmt(erg.Ik3max_kA,1)}kA · Ik1min ${fmt(erg.Ik1min_A,0)}A`;
+      g.appendChild(t3);
+    }
+    g.addEventListener("click", ()=>selectNode(node.id));
+    svg.appendChild(g);
+    (node.kinder||[]).forEach(drawNode);
+  }
+  drawNode(root);
+}
+
+function fieldWrap(labelTxt, inputEl){
+  const wrap = el("div", { class:"field" });
+  wrap.appendChild(el("label", { text:labelTxt }));
+  wrap.appendChild(inputEl);
+  return wrap;
+}
+function buildFuseAssignmentUI(node){
+  const wrap = el("div", {});
+  wrap.appendChild(el("h4", { text:"Sicherungszuordnung (schützt die Leitung zu diesem Knoten)" }));
+  const row = el("div", { class:"row" });
+  const selBau = el("select"), selKlasse = el("select"), selUn = el("select"), selIn = el("select");
+  function relist(){
+    const lib = STATE.fuseLibrary;
+    const uniq = a=>[...new Set(a)];
+    const baugroessen = uniq(lib.map(f=>f.baugroesse)).filter(Boolean);
+    fillSelect(selBau, baugroessen.length?baugroessen:BAUGROESSEN);
+    const klassen = uniq(lib.filter(f=>!selBau.value||f.baugroesse===selBau.value).map(f=>f.klasse));
+    fillSelect(selKlasse, klassen.length?klassen:Object.keys(BETRIEBSKLASSEN));
+    const uns = uniq(lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)).map(f=>f.Un_V)).filter(Boolean);
+    fillSelect(selUn, uns);
+    const inList = lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)&&(!selUn.value||f.Un_V==selUn.value));
+    selIn.innerHTML = "";
+    inList.forEach((f,i)=>{
+      const label = f.klasse==="gM" ? `${f.In_A} M ${f.Ich_A}` : (f.klasse==="gTr" ? `${f.Sr_kVA} kVA` : `${f.In_A} A`);
+      selIn.appendChild(el("option", { value:i, text: label+` (${f.hersteller||"?"} ${f.typbezeichnung||""})` }));
+    });
+    selIn._filtered = inList;
+  }
+  [selBau,selKlasse,selUn].forEach(s=>s.addEventListener("change", relist));
+  relist();
+  row.append(fieldWrap("Baugröße", selBau), fieldWrap("Klasse", selKlasse), fieldWrap("Un [V]", selUn), fieldWrap("Sicherung", selIn));
+  wrap.appendChild(row);
+  const actionRow = el("div", { class:"row" });
+  const btnAssign = el("button", { text:"Dieser Leitung zuordnen", class:"primary" });
+  btnAssign.addEventListener("click", ()=>{
+    const f = (selIn._filtered||[])[parseInt(selIn.value)];
+    if(!f){ alert("Keine Sicherung in der Bibliothek gefunden -- bitte zunächst Datensatz anlegen/importieren."); return; }
+    ensureFuseId(f);
+    node.fuseId = f.id;
+    recompute();
+  });
+  const btnRemove = el("button", { text:"Zuordnung entfernen", class:"danger" });
+  btnRemove.addEventListener("click", ()=>{ node.fuseId=null; recompute(); });
+  actionRow.append(btnAssign, btnRemove);
+  wrap.appendChild(actionRow);
+  const current = fuseById(node.fuseId);
+  wrap.appendChild(el("div", { class:"small", text: current ? `Aktuell zugeordnet: ${current.hersteller||"?"} ${current.typbezeichnung||""} — ${current.klasse} ${current.baugroesse}` : "Keine Sicherung zugeordnet." }));
+  return wrap;
+}
+function renderNodeEditor(){
+  const host = document.getElementById("nodeEditor");
+  host.innerHTML = "";
+  const node = findNode(STATE.topologie.root, STATE.selectedNodeId);
+  if(!node) return;
+  const card = el("div", { class:"card" });
+  card.appendChild(el("h3", { text:`Einstellungen: ${node.name} (${knotenTypLabel(node.typ)})` }));
+  card.appendChild(mkField("Bezeichnung", "text", node.name, v=>{ node.name=v; renderTopoDiagram(); recompute(); }));
+
+  if(node.typ === "einspeisung"){
+    card.appendChild(el("p", { class:"hinweis", text:"Die Einspeisung wird in Abschnitt 2 (Netzeinspeisung) parametriert." }));
+  } else {
+    const l = node.leitung;
+    const row1 = el("div", { class:"row" });
+    row1.append(
+      mkField("Länge l [m]", "number", l.l_m, v=>{ l.l_m=parseFloat(v)||0; recompute(); }),
+      mkSelectField("Material", ["Cu","Al"], l.material, v=>{ l.material=v; recompute(); }),
+      mkSelectField("Isolierung (Endtemp. Ik_min)", ["PVC","VPE"], l.isoliert, v=>{ l.isoliert=v; recompute(); })
+    );
+    const row2 = el("div", { class:"row" });
+    row2.append(
+      mkField("Querschnitt L [mm²]", "number", l.A_L, v=>{ l.A_L=parseFloat(v)||0; recompute(); }),
+      mkField("Querschnitt N [mm²]", "number", l.A_N, v=>{ l.A_N=parseFloat(v)||0; recompute(); }),
+      mkField("Querschnitt PE [mm²]", "number", l.A_PE, v=>{ l.A_PE=parseFloat(v)||0; recompute(); })
+    );
+    const row3 = el("div", { class:"row" });
+    row3.append(
+      mkField("Verlegeart (Dokumentation, DIN VDE 0298-4)", "text", l.verlegeart, v=>{ l.verlegeart=v; }),
+      mkField("Parallele Kabel n", "number", l.n_parallel, v=>{ l.n_parallel=parseInt(v)||1; recompute(); }),
+      mkField("Reaktanzbelag x' [Ω/km]", "number", l.x_strich, v=>{ l.x_strich=parseFloat(v)||0.08; recompute(); })
+    );
+    const row4 = el("div", { class:"row" });
+    row4.append(
+      mkField("Belastbarkeit Iz [A] (DIN VDE 0298-4)", "number", l.Iz_A, v=>{ l.Iz_A=parseFloat(v)||null; recompute(); }),
+      mkField("Stoßstromfestigkeit Verteilung [kA] (optional)", "number", l.stossstromfestigkeit_kA, v=>{ l.stossstromfestigkeit_kA=parseFloat(v)||null; recompute(); }),
+      mkSelectField("Stromkreisart (Abschaltzeit)", ["Endstromkreis","Verteilung"], l.stromkreisart||"Endstromkreis", v=>{ l.stromkreisart=v; recompute(); })
+    );
+    card.append(row1,row2,row3,row4);
+    card.appendChild(buildFuseAssignmentUI(node));
+  }
+  host.appendChild(card);
+}
+
 function mkField(labelTxt, type, value, onChange){
   const wrap = el("div", { class:"field" });
   wrap.appendChild(el("label", { text:labelTxt }));
@@ -1018,11 +1282,6 @@ function mkSelectField(labelTxt, options, value, onChange){
   return wrap;
 }
 
-document.getElementById("btnAddAbschnitt").addEventListener("click", ()=>{
-  STATE.abschnitte.push({ name:"Abschnitt "+(STATE.abschnitte.length+1), l_m:20, A_L:16, A_N:16, A_PE:16, material:"Cu", verlegeart:"", n_parallel:1, isoliert:"PVC", x_strich:0.08, Iz_A:null, stossstromfestigkeit_kA:null, stromkreisart:"Endstromkreis" });
-  renderStrecke(); recompute();
-});
-
 /* ---- Sicherungsbibliothek ---- */
 function renderFuseList(){
   document.getElementById("fuseCount").textContent = STATE.fuseLibrary.length;
@@ -1033,7 +1292,12 @@ function renderFuseList(){
     const head = el("div", { class:"card-head" }, [
       el("strong", { text: `${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse} ${f.In_A?f.In_A+"A":""}${f.Ich_A?" M "+f.Ich_A+"A":""}${f.Sr_kVA?f.Sr_kVA+"kVA":""} / ${f.Un_V}V` })
     ]);
-    const del = el("button", { text:"✕", class:"danger" }); del.addEventListener("click", ()=>{ STATE.fuseLibrary.splice(idx,1); renderFuseList(); refreshFuseSelectors(); saveState(); });
+    const del = el("button", { text:"✕", class:"danger" });
+    del.addEventListener("click", ()=>{
+      const removed = STATE.fuseLibrary.splice(idx,1)[0];
+      if(removed) clearFuseReferences(STATE.topologie.root, removed.id);
+      renderFuseList(); renderNodeEditor(); recompute();
+    });
     head.appendChild(del);
     card.appendChild(head);
     card.appendChild(el("div", { class:"small", text: `Icn=${f.Icn_kA??"—"}kA · Quelle: ${f.quelle||"—"} (Stand ${f.stand||"—"})` }));
@@ -1057,9 +1321,9 @@ function showFuseEditor(fuse){
   const btnSave = el("button", { text:"Datensatz speichern", class:"primary" });
   btnSave.addEventListener("click", ()=>{
     try{
-      const parsed = JSON.parse(jsonArea.value);
+      const parsed = ensureFuseId(JSON.parse(jsonArea.value));
       STATE.fuseLibrary.push(parsed);
-      renderFuseList(); refreshFuseSelectors(); saveState();
+      renderFuseList(); renderNodeEditor(); recompute();
       host.innerHTML = "";
     }catch(e){ alert("Ungültiges JSON: "+e.message); }
   });
@@ -1078,9 +1342,9 @@ document.getElementById("fuseImportFile").addEventListener("change", (ev)=>{
   reader.onload = ()=>{
     try{
       const data = JSON.parse(reader.result);
-      const arr = Array.isArray(data) ? data : [data];
+      const arr = (Array.isArray(data) ? data : [data]).map(ensureFuseId);
       STATE.fuseLibrary.push(...arr);
-      renderFuseList(); refreshFuseSelectors(); saveState();
+      renderFuseList(); renderNodeEditor(); recompute();
     }catch(e){ alert("Import fehlgeschlagen: "+e.message); }
   };
   reader.readAsText(file);
@@ -1092,62 +1356,18 @@ function downloadJSON(obj, filename){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-
-/* ---- Kaskadierende Sicherungsauswahl ---- */
-function refreshFuseSelectors(){
-  const selBau = document.getElementById("sel_baugroesse");
-  const selKlasse = document.getElementById("sel_klasse");
-  const selUn = document.getElementById("sel_un");
-  const selIn = document.getElementById("sel_in");
-  const lib = STATE.fuseLibrary;
-
-  function uniq(arr){ return [...new Set(arr)]; }
-  const baugroessen = uniq(lib.map(f=>f.baugroesse)).filter(Boolean);
-  fillSelect(selBau, baugroessen.length?baugroessen:BAUGROESSEN);
-
-  const klassenVerf = uniq(lib.filter(f=>!selBau.value||f.baugroesse===selBau.value).map(f=>f.klasse));
-  fillSelect(selKlasse, klassenVerf.length?klassenVerf:Object.keys(BETRIEBSKLASSEN));
-
-  const unVerf = uniq(lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)).map(f=>f.Un_V)).filter(Boolean);
-  fillSelect(selUn, unVerf);
-
-  const inVerf = lib.filter(f=>(!selBau.value||f.baugroesse===selBau.value)&&(!selKlasse.value||f.klasse===selKlasse.value)&&(!selUn.value||f.Un_V==selUn.value));
-  selIn.innerHTML = "";
-  inVerf.forEach((f,i)=>{
-    const label = f.klasse==="gM" ? `${f.In_A} M ${f.Ich_A}` : (f.klasse==="gTr" ? `${f.Sr_kVA} kVA` : `${f.In_A} A`);
-    selIn.appendChild(el("option", { value:i, text: label + ` (${f.hersteller||"?"} ${f.typbezeichnung||""})` }));
-  });
-
-  const nodeSel = document.getElementById("sel_node");
-  nodeSel.innerHTML = "";
-  const strecke = aktuelleStrecke();
-  if(strecke) strecke.knoten.forEach((k,i)=> nodeSel.appendChild(el("option", { value:i, text:`${i}: ${k.name}` })));
-}
 function fillSelect(sel, values){
   const prev = sel.value;
   sel.innerHTML = "";
   values.forEach(v=> sel.appendChild(el("option", { value:v, text:v })));
   if(values.includes(prev)) sel.value = prev;
 }
-["sel_baugroesse","sel_klasse","sel_un"].forEach(id=>{
-  document.getElementById(id).addEventListener("change", refreshFuseSelectors);
-});
 
-document.getElementById("btnAssignFuse").addEventListener("click", ()=>{
-  const selBau = document.getElementById("sel_baugroesse").value;
-  const selKlasse = document.getElementById("sel_klasse").value;
-  const selUn = document.getElementById("sel_un").value;
-  const idx = parseInt(document.getElementById("sel_in").value);
-  const nodeIdx = parseInt(document.getElementById("sel_node").value);
-  const inVerf = STATE.fuseLibrary.filter(f=>(!selBau||f.baugroesse===selBau)&&(!selKlasse||f.klasse===selKlasse)&&(!selUn||f.Un_V==selUn));
-  const fuse = inVerf[idx];
-  if(!fuse){ alert("Keine Sicherung in der Bibliothek gefunden -- bitte zunächst Datensatz anlegen/importieren."); return; }
-  STATE.nodeAssignments[nodeIdx] = STATE.fuseLibrary.indexOf(fuse);
-  recompute(); saveState();
-});
-
-function aktuelleStrecke(){
-  try{ return berechneStrecke(sammleNetzInput()); }catch(e){ return null; }
+function aktuelleTopologie(){
+  try{
+    const { netz, c_max } = sammleNetzInput();
+    return berechneTopologie({ netz, c_max, root: STATE.topologie.root });
+  }catch(e){ console.error(e); return null; }
 }
 function sammleNetzInput(){
   const c_max = parseFloat(document.getElementById("f_cmax").value);
@@ -1163,44 +1383,50 @@ function sammleNetzInput(){
   } else {
     netz = { modus:"C", ZS_gemessen_Ohm: parseFloat(document.getElementById("c_zs").value), RX_gemessen: parseFloat(document.getElementById("c_rx").value), Un_V: parseFloat(document.getElementById("c_un").value) };
   }
-  return { netz, abschnitte: STATE.abschnitte, c_max, netzform };
+  return { netz, c_max, netzform };
 }
 
 /* ---- Ergebnisdarstellung + Bewertung ---- */
 function recompute(){
-  const strecke = aktuelleStrecke();
-  if(!strecke) return;
+  const topo = aktuelleTopologie();
+  if(!topo) return;
+  ERG_CACHE = new Map(topo.flatList.map(e=>[e.id, e]));
   const netzform = document.getElementById("f_netzform").value;
   const host = document.getElementById("ergebnisse");
   host.innerHTML = "";
 
-  strecke.knoten.forEach((k, idx)=>{
-    const fuseIdx = STATE.nodeAssignments[idx];
-    const fuse = fuseIdx!=null ? STATE.fuseLibrary[fuseIdx] : null;
-    const ab = k.abschnitt && k.abschnitt.ab;
-    const material = ab ? ab.material : "Cu";
-    const isoliert = ab ? ab.isoliert : "PVC";
-    const A_L = ab ? ab.A_L : null;
-    const Iz_A = ab ? ab.Iz_A : null;
-    const stossstromfestigkeit_kA = ab ? ab.stossstromfestigkeit_kA : null;
-    const stromkreisart = ab ? (ab.stromkreisart||"Endstromkreis") : "Endstromkreis";
+  topo.flatList.forEach((erg)=>{
+    const node = erg.node;
+    const fuse = fuseById(node.fuseId);
+    const hasLeitung = !!node.leitung;
+    const material = hasLeitung ? node.leitung.material : null;
+    const isoliert = hasLeitung ? node.leitung.isoliert : null;
+    const A_L = hasLeitung ? node.leitung.A_L : null;
+    const Iz_A = hasLeitung ? node.leitung.Iz_A : null;
+    const stossstromfestigkeit_kA = hasLeitung ? node.leitung.stossstromfestigkeit_kA : null;
+    const stromkreisart = hasLeitung ? (node.leitung.stromkreisart||"Endstromkreis") : "Endstromkreis";
     const zeitConf = NORM.abschaltzeiten[netzform] || NORM.abschaltzeiten["TN-S"];
     const geforderteZeit_s = stromkreisart==="Endstromkreis" ? zeitConf.endstromkreis_s : zeitConf.verteilung_s;
 
-    const vorFuseIdx = idx>0 ? STATE.nodeAssignments[idx-1] : null;
-    const vorgelagerteFuse = vorFuseIdx!=null ? STATE.fuseLibrary[vorFuseIdx] : null;
+    const vorgelagerteFuse = erg.parentNode ? fuseById(erg.parentNode.fuseId) : null;
 
-    const bew = fuse ? bewerteKnoten({ knotenErg:k, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }) : null;
+    const bew = fuse ? bewerteKnoten({ knotenErg:erg, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }) : null;
 
     const card = el("div", { class:"card" });
-    card.appendChild(el("h3", { text: `Knoten ${idx}: ${k.name}` }));
+    const headRow = el("div", { class:"card-head" });
+    headRow.appendChild(el("h3", { text: `${"— ".repeat(erg.depth)}${knotenTypLabel(erg.typ)}: ${erg.name}` }));
+    const btnSel = el("button", { text:"In Topologie auswählen" });
+    btnSel.addEventListener("click", ()=>{ selectNode(erg.id); const w=document.getElementById("topoDiagramWrap"); if(w) w.scrollIntoView({behavior:"smooth", block:"center"}); });
+    headRow.appendChild(btnSel);
+    card.appendChild(headRow);
+
     const kz = el("div", {});
-    kz.appendChild(kennzahl("Ik3max", fmt(k.Ik3max_kA)+" kA"));
-    kz.appendChild(kennzahl("Ik2", fmt(k.Ik2_kA)+" kA"));
-    kz.appendChild(kennzahl("Ik1min", fmt(k.Ik1min_A,1)+" A"));
-    kz.appendChild(kennzahl("ZS(min)", fmt(k.ZS_min_Ohm,4)+" Ω"));
-    kz.appendChild(kennzahl("ip", fmt(k.ip_kA)+" kA"));
-    kz.appendChild(kennzahl("κ", fmt(k.kappa,3)));
+    kz.appendChild(kennzahl("Ik3max", fmt(erg.Ik3max_kA)+" kA"));
+    kz.appendChild(kennzahl("Ik2", fmt(erg.Ik2_kA)+" kA"));
+    kz.appendChild(kennzahl("Ik1min", fmt(erg.Ik1min_A,1)+" A"));
+    kz.appendChild(kennzahl("ZS(min)", fmt(erg.ZS_min_Ohm,4)+" Ω"));
+    kz.appendChild(kennzahl("ip", fmt(erg.ip_kA)+" kA"));
+    kz.appendChild(kennzahl("κ", fmt(erg.kappa,3)));
     card.appendChild(kz);
 
     if(fuse){
@@ -1222,16 +1448,17 @@ function recompute(){
     const rw = el("details", { class:"rechenweg" });
     rw.appendChild(el("summary", { text:"Vollständiger Rechenweg anzeigen" }));
     const pre = el("pre");
-    pre.textContent = rechenwegText(k, idx, strecke, netzform, geforderteZeit_s);
+    pre.textContent = rechenwegText(erg, netzform, geforderteZeit_s);
     rw.appendChild(pre);
     card.appendChild(rw);
 
     host.appendChild(card);
   });
 
-  refreshChartNodeSelectors(strecke);
+  renderTopoDiagram();
+  refreshChartNodeSelectors(topo);
   drawChart();
-  renderProtokoll(strecke, netzform);
+  renderProtokoll(topo, netzform);
   saveState();
 }
 
@@ -1250,32 +1477,32 @@ function ampel(title, res){
   return box;
 }
 
-function rechenwegText(k, idx, strecke, netzform, geforderteZeit_s){
+function rechenwegText(erg, netzform, geforderteZeit_s){
   const lines = [];
-  lines.push(`Knoten ${idx}: ${k.name}`);
-  lines.push(`R1(max,20°C) = ${fmt(k.R1max,6)} Ω, X1(max,20°C) = ${fmt(k.X1max,6)} Ω`);
-  lines.push(`R1(min,Betriebstemp.) = ${fmt(k.R1min,6)} Ω, X1(min) = ${fmt(k.X1min,6)} Ω`);
-  lines.push(`RPE(min) = ${fmt(k.RPEmin,6)} Ω, XPE(min) = ${fmt(k.XPEmin,6)} Ω`);
-  lines.push(`ZS(min) = sqrt((R1min+RPEmin)² + (X1min+XPEmin)²) = ${fmt(k.ZS_min_Ohm,6)} Ω`);
-  lines.push(`Ik3max = c_max*Un / (sqrt(3)*sqrt(R1max²+X1max²))  [DIN EN 60909-0] = ${fmt(k.Ik3max_kA,4)} kA`);
-  lines.push(`Ik2 = (sqrt(3)/2)*Ik3max  [DIN EN 60909-0] = ${fmt(k.Ik2_kA,4)} kA`);
-  lines.push(`Ik1min = c_min*U0 / ZS(min)  [DIN EN 60909-0, vereinfachtes Impedanzverfahren] = ${fmt(k.Ik1min_A,2)} A`);
-  lines.push(`kappa = 1,02+0,98*e^(-3*R/X) = ${fmt(k.kappa,4)}; ip = kappa*sqrt(2)*Ik3max = ${fmt(k.ip_kA,4)} kA`);
+  lines.push(`${knotenTypLabel(erg.typ)}: ${erg.name}${erg.parentNode?` (versorgt über ${erg.parentNode.name})`:""}`);
+  lines.push(`R1(max,20°C) = ${fmt(erg.R1max,6)} Ω, X1(max,20°C) = ${fmt(erg.X1max,6)} Ω`);
+  lines.push(`R1(min,Betriebstemp.) = ${fmt(erg.R1min,6)} Ω, X1(min) = ${fmt(erg.X1min,6)} Ω`);
+  lines.push(`RPE(min) = ${fmt(erg.RPEmin,6)} Ω, XPE(min) = ${fmt(erg.XPEmin,6)} Ω`);
+  lines.push(`ZS(min) = sqrt((R1min+RPEmin)² + (X1min+XPEmin)²) = ${fmt(erg.ZS_min_Ohm,6)} Ω`);
+  lines.push(`Ik3max = c_max*Un / (sqrt(3)*sqrt(R1max²+X1max²))  [DIN EN 60909-0] = ${fmt(erg.Ik3max_kA,4)} kA`);
+  lines.push(`Ik2 = (sqrt(3)/2)*Ik3max  [DIN EN 60909-0] = ${fmt(erg.Ik2_kA,4)} kA`);
+  lines.push(`Ik1min = c_min*U0 / ZS(min)  [DIN EN 60909-0, vereinfachtes Impedanzverfahren] = ${fmt(erg.Ik1min_A,2)} A`);
+  lines.push(`kappa = 1,02+0,98*e^(-3*R/X) = ${fmt(erg.kappa,4)}; ip = kappa*sqrt(2)*Ik3max = ${fmt(erg.ip_kA,4)} kA`);
   lines.push(`Netzform: ${netzform}; geforderte Abschaltzeit (Tab. 41.1 DIN VDE 0100-410): ${geforderteZeit_s ?? "nicht definiert"} s`);
   return lines.join("\n");
 }
 
 /* ---- Diagramm (Canvas, log-log, HiDPI) ---- */
-function refreshChartNodeSelectors(strecke){
+function refreshChartNodeSelectors(topo){
   const nodeSel = document.getElementById("chartNode");
   const prevVal = nodeSel.value;
   nodeSel.innerHTML = "";
-  strecke.knoten.forEach((k,i)=> nodeSel.appendChild(el("option", { value:i, text:`${i}: ${k.name}` })));
-  if(prevVal) nodeSel.value = prevVal;
+  topo.flatList.forEach(erg=> nodeSel.appendChild(el("option", { value:erg.id, text:`${"— ".repeat(erg.depth)}${erg.name}` })));
+  if(prevVal && topo.flatList.some(e=>e.id===prevVal)) nodeSel.value = prevVal;
 
   const cmp = document.getElementById("chartCompare");
   cmp.innerHTML = "";
-  STATE.fuseLibrary.forEach((f,i)=> cmp.appendChild(el("option", { value:i, text:`${f.klasse} ${f.baugroesse} ${f.In_A||f.Sr_kVA||""} (${f.hersteller||"?"})` })));
+  STATE.fuseLibrary.forEach((f)=>{ ensureFuseId(f); cmp.appendChild(el("option", { value:f.id, text:`${f.klasse} ${f.baugroesse} ${f.In_A||f.Sr_kVA||""} (${f.hersteller||"?"})` })); });
 }
 document.getElementById("chartNode").addEventListener("change", drawChart);
 document.getElementById("chartCompare").addEventListener("change", drawChart);
@@ -1349,22 +1576,20 @@ function drawChart(){
     ctx.setLineDash([]);
   }
 
-  const nodeIdx = parseInt(document.getElementById("chartNode").value);
-  const strecke = aktuelleStrecke();
-  if(strecke && strecke.knoten[nodeIdx]){
-    const k = strecke.knoten[nodeIdx];
-    const fuseIdx = STATE.nodeAssignments[nodeIdx];
-    const fuse = fuseIdx!=null ? STATE.fuseLibrary[fuseIdx] : null;
+  const selectedId = document.getElementById("chartNode").value;
+  const topo = aktuelleTopologie();
+  const erg = topo ? (topo.flatList.find(e=>e.id===selectedId) || topo.flatList[0]) : null;
+  if(erg){
+    const fuse = fuseById(erg.node.fuseId);
     if(fuse) plotKennlinie(fuse.kennlinie, "#0a5fb4");
 
-    const vorFuseIdx = nodeIdx>0 ? STATE.nodeAssignments[nodeIdx-1] : null;
-    const vorFuse = vorFuseIdx!=null ? STATE.fuseLibrary[vorFuseIdx] : null;
+    const vorFuse = erg.parentNode ? fuseById(erg.parentNode.fuseId) : null;
     if(vorFuse) plotKennlinie(vorFuse.kennlinie, "#b47a00");
 
     // Marker Ik1min / Ik3max
     ctx.strokeStyle = "#c62828"; ctx.setLineDash([3,3]);
-    if(k.Ik1min_A>0 && k.Ik1min_A<xMax){ ctx.beginPath(); ctx.moveTo(xPix(k.Ik1min_A), margin.t); ctx.lineTo(xPix(k.Ik1min_A), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik1min", xPix(k.Ik1min_A)+3, margin.t+12); }
-    if(k.Ik3max_kA*1000>0 && k.Ik3max_kA*1000<xMax){ ctx.beginPath(); ctx.moveTo(xPix(k.Ik3max_kA*1000), margin.t); ctx.lineTo(xPix(k.Ik3max_kA*1000), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik3max", xPix(k.Ik3max_kA*1000)+3, margin.t+26); }
+    if(erg.Ik1min_A>0 && erg.Ik1min_A<xMax){ ctx.beginPath(); ctx.moveTo(xPix(erg.Ik1min_A), margin.t); ctx.lineTo(xPix(erg.Ik1min_A), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik1min", xPix(erg.Ik1min_A)+3, margin.t+12); }
+    if(erg.Ik3max_kA*1000>0 && erg.Ik3max_kA*1000<xMax){ ctx.beginPath(); ctx.moveTo(xPix(erg.Ik3max_kA*1000), margin.t); ctx.lineTo(xPix(erg.Ik3max_kA*1000), margin.t+plotH); ctx.stroke(); ctx.fillText("Ik3max", xPix(erg.Ik3max_kA*1000)+3, margin.t+26); }
     ctx.strokeStyle = "#1e9a41";
     [0.4,5].forEach(t=>{ ctx.beginPath(); ctx.moveTo(margin.l, yPix(t)); ctx.lineTo(cssW-margin.r, yPix(t)); ctx.stroke(); ctx.fillText(t+"s", cssW-margin.r-24, yPix(t)-3); });
     ctx.setLineDash([]);
@@ -1373,14 +1598,14 @@ function drawChart(){
   const cmp = document.getElementById("chartCompare");
   const palette = ["#9c27b0","#00897b","#e64a19","#3949ab","#c0ca33"];
   [...cmp.selectedOptions].forEach((opt,i)=>{
-    const f = STATE.fuseLibrary[parseInt(opt.value)];
+    const f = fuseById(opt.value);
     if(f) plotKennlinie(f.kennlinie, palette[i%palette.length]);
   });
 }
 window.addEventListener("resize", ()=>drawChart());
 
 /* ---- Protokoll ---- */
-function renderProtokoll(strecke, netzform){
+function renderProtokoll(topo, netzform){
   document.getElementById("protoHead").innerHTML = `
     <table>
       <tr><th>Kunde</th><td>${escapeHtml(document.getElementById("f_kunde").value)}</td><th>Anlage</th><td>${escapeHtml(document.getElementById("f_anlage").value)}</td></tr>
@@ -1389,13 +1614,13 @@ function renderProtokoll(strecke, netzform){
     </table>`;
   document.getElementById("protoEingaben").innerHTML = `<h3>Eingaben Netzeinspeisung (Modus ${STATE.netzModus})</h3><pre>${escapeHtml(JSON.stringify(sammleNetzInput().netz,null,2))}</pre>`;
   let rows = "";
-  strecke.knoten.forEach((k,i)=>{
-    rows += `<tr><td>${i}</td><td>${escapeHtml(k.name)}</td><td>${fmt(k.Ik3max_kA)}</td><td>${fmt(k.Ik2_kA)}</td><td>${fmt(k.Ik1min_A,1)}</td><td>${fmt(k.ZS_min_Ohm,4)}</td><td>${fmt(k.ip_kA)}</td></tr>`;
+  topo.flatList.forEach(erg=>{
+    rows += `<tr><td>${"— ".repeat(erg.depth)}${escapeHtml(erg.name)}</td><td>${knotenTypLabel(erg.typ)}</td><td>${fmt(erg.Ik3max_kA)}</td><td>${fmt(erg.Ik2_kA)}</td><td>${fmt(erg.Ik1min_A,1)}</td><td>${fmt(erg.ZS_min_Ohm,4)}</td><td>${fmt(erg.ip_kA)}</td></tr>`;
   });
   document.getElementById("protoErgebnisse").innerHTML = `<h3>Ergebnisse je Knoten</h3>
-    <table><tr><th>#</th><th>Bezeichnung</th><th>Ik3max [kA]</th><th>Ik2 [kA]</th><th>Ik1min [A]</th><th>ZS(min) [Ω]</th><th>ip [kA]</th></tr>${rows}</table>`;
+    <table><tr><th>Knoten</th><th>Typ</th><th>Ik3max [kA]</th><th>Ik2 [kA]</th><th>Ik1min [A]</th><th>ZS(min) [Ω]</th><th>ip [kA]</th></tr>${rows}</table>`;
   document.getElementById("protoBewertung").innerHTML = `<h3>Bewertungsübersicht</h3><p class="small">Siehe Ampel-Panels je Knoten im Ergebnisbereich (Abschnitt 5) — beim Drucken werden diese mit ausgegeben, da <code>#ergebnisse</code> Teil des Ausdrucks ist.</p>`;
-  const quellen = STATE.fuseLibrary.filter((f,i)=>Object.values(STATE.nodeAssignments).includes(i)).map(f=>`${f.hersteller} ${f.typbezeichnung} (Stand ${f.stand||"—"}, Quelle: ${f.quelle||"—"})`).join("; ");
+  const quellen = STATE.fuseLibrary.filter(f=> topo.flatList.some(erg=>erg.node.fuseId===f.id)).map(f=>`${f.hersteller} ${f.typbezeichnung} (Stand ${f.stand||"—"}, Quelle: ${f.quelle||"—"})`).join("; ");
   document.getElementById("protoQuelle").textContent = quellen || "keine Sicherung zugeordnet";
   document.getElementById("protoFooter").textContent = `Version ${APP_VERSION} · Berechnet am ${new Date().toLocaleString("de-DE")}`;
 }
@@ -1419,7 +1644,7 @@ document.getElementById("btnExportCase").addEventListener("click", ()=>{
       b_srt:document.getElementById("b_srt").value, b_ukr:document.getElementById("b_ukr").value, b_pkrt:document.getElementById("b_pkrt").value, b_unlv:document.getElementById("b_unlv").value,
       c_zs:document.getElementById("c_zs").value, c_rx:document.getElementById("c_rx").value, c_un:document.getElementById("c_un").value
     },
-    abschnitte: STATE.abschnitte, fuseLibrary: STATE.fuseLibrary, nodeAssignments: STATE.nodeAssignments,
+    topologie: STATE.topologie, fuseLibrary: STATE.fuseLibrary,
     version: APP_VERSION, zeitstempel: new Date().toISOString()
   };
   downloadJSON(full, "berechnungsfall.json");
@@ -1453,19 +1678,24 @@ function applyCase(data){
   document.getElementById("modeA").style.display = STATE.netzModus==="A" ? "" : "none";
   document.getElementById("modeB").style.display = STATE.netzModus==="B" ? "" : "none";
   document.getElementById("modeC").style.display = STATE.netzModus==="C" ? "" : "none";
-  STATE.abschnitte = data.abschnitte || [];
-  STATE.fuseLibrary = data.fuseLibrary || [];
-  STATE.nodeAssignments = data.nodeAssignments || {};
-  renderStrecke(); renderFuseList(); refreshFuseSelectors(); recompute();
+  if(!data.topologie && data.abschnitte){
+    data.topologie = { root: migriereAbschnitteZuTopologie(data.abschnitte, data.nodeAssignments||{}) };
+  }
+  STATE.topologie = data.topologie || neueTopologie();
+  STATE.fuseLibrary = (data.fuseLibrary || []).map(ensureFuseId);
+  loeseLegacyFuseRefsAuf(STATE.topologie.root);
+  STATE.selectedNodeId = STATE.topologie.root.id;
+  renderFuseList(); renderTopoDiagram(); renderNodeEditor(); recompute();
 }
 
 document.getElementById("btnResetAll").addEventListener("click", ()=>{
-  if(!confirm("Wirklich alle Eingaben, die Sicherungsbibliothek und die Strecke zurücksetzen?")) return;
+  if(!confirm("Wirklich alle Eingaben, die Sicherungsbibliothek und die Anlagentopologie zurücksetzen?")) return;
   localStorage.removeItem("nhrechner_state_v1");
-  STATE = { header:{}, netzModus:"A", netz:{}, abschnitte:[], fuseLibrary:[], nodeAssignments:{}, nodeParams:{}, logoBase64:null };
+  STATE = { header:{}, netzModus:"A", netz:{}, topologie: neueTopologie(), selectedNodeId:null, fuseLibrary:[], logoBase64:null };
+  STATE.selectedNodeId = STATE.topologie.root.id;
   document.getElementById("f_kunde").value=""; document.getElementById("f_anlage").value=""; document.getElementById("f_anlagenteil").value="";
   document.getElementById("f_pruefer").value=""; document.getElementById("f_datum").value=""; document.getElementById("f_netzform").value="TN-S";
-  renderStrecke(); renderFuseList(); refreshFuseSelectors(); recompute();
+  renderFuseList(); renderTopoDiagram(); renderNodeEditor(); recompute();
 });
 
 /* ---- Logo Upload (Base64, lokal) ---- */
@@ -1506,12 +1736,19 @@ function init(){
   loadState();
   if(localStorage.getItem("nhrechner_legal_ack")==="1"){ document.getElementById("legalOverlay").style.display="none"; }
   if(!document.getElementById("f_datum").value) document.getElementById("f_datum").value = new Date().toISOString().slice(0,10);
-  if(STATE.abschnitte.length===0){
-    STATE.abschnitte.push({ name:"Hauptleitung", l_m:20, A_L:35, A_N:35, A_PE:16, material:"Cu", verlegeart:"", n_parallel:1, isoliert:"PVC", x_strich:0.08, Iz_A:null, stossstromfestigkeit_kA:null, stromkreisart:"Verteilung" });
+  // Beispieltopologie nur beim allerersten Start (keine gespeicherten Knoten vorhanden)
+  if(STATE.topologie.root.kinder.length===0){
+    const hv = neuerKnoten("hauptverteilung", "HV1");
+    hv.leitung = Object.assign(neueLeitung(), { l_m:20, A_L:35, A_N:35, A_PE:16, stromkreisart:"Verteilung" });
+    const ek = neuerKnoten("endstromkreis", "EK1");
+    ek.leitung = Object.assign(neueLeitung(), { l_m:15, A_L:2.5, A_N:2.5, A_PE:2.5, stromkreisart:"Endstromkreis" });
+    hv.kinder.push(ek);
+    STATE.topologie.root.kinder.push(hv);
+    STATE.selectedNodeId = hv.id;
   }
-  renderStrecke();
   renderFuseList();
-  refreshFuseSelectors();
+  renderTopoDiagram();
+  renderNodeEditor();
   recompute();
 }
 init();

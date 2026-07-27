@@ -151,8 +151,10 @@ textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
 .dragHandle{cursor:grab; user-select:none; font-size:1.3rem; padding:0 .3em;}
 .pv-only{display:none;}
 .ac-only{display:block;}
-#topoDiagramWrap{overflow-x:auto; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
-#topoDiagram{max-width:100%; height:auto; display:block; margin:0 auto;}
+#topoDiagramWrap{overflow:auto; max-height:65vh; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
+#topoDiagram{display:block;}
+#topoDiagram .knoten-tile{touch-action:none; cursor:grab;}
+#topoDiagram .knoten-tile.dragging{cursor:grabbing;}
 .modeswitch{display:flex; gap:.3em;}
 .modeswitch button{
   background:transparent; border:1px solid rgba(255,255,255,.6); color:inherit; min-height:36px; font-weight:600;
@@ -323,7 +325,10 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
     <div class="field"><button id="btnAddUV">+ Unterverteilung</button></div>
     <div class="field"><button id="btnAddEK">+ Endstromkreis</button></div>
     <div class="field"><button class="danger" id="btnDelNode">Ausgewählten Knoten löschen</button></div>
+    <div class="field"><button id="btnAutoArrange">🔀 Automatisch anordnen</button></div>
   </div>
+  <p class="hinweis">Kacheln lassen sich frei per Ziehen (Maus/Finger) verschieben und beliebig anordnen — wie beim
+  händischen Zeichnen eines Einpolschaltplans. Die Zeichenfläche lässt sich bei Bedarf scrollen.</p>
   <div id="topoDiagramWrap"><svg id="topoDiagram"></svg></div>
   <div id="nodeEditor"></div>
 </section>
@@ -405,12 +410,13 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
    ============================================================================================ */
 "use strict";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.4.0";
 const CHANGELOG = [
   { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." },
   { v: "1.1.0", datum: "2026-07-26", text: "Anlagentopologie (Baumstruktur Einspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise) mit visuellem SVG-Diagramm ersetzt die frühere lineare Leitungsstrecke. Leitungsdaten und Sicherungszuordnung werden je Knoten in dessen Einstellungen bearbeitet (Klick/Tipp auf den Knoten im Diagramm). Automatische Migration älterer gespeicherter Berechnungsfälle." },
   { v: "1.2.0", datum: "2026-07-26", text: "Glossar/Wiki hinzugefügt: anklickbare ⓘ-Infofelder neben (fast) jeder Bezeichnung erklären den jeweiligen Datenpunkt inkl. Normbezug; zusätzlich durchsuchbares Glossar-Panel (Kopfzeile) für alle Werte, inklusive der Felder eines Sicherungsdatensatzes (JSON), die keine eigenen Infofelder haben können." },
-  { v: "1.3.0", datum: "2026-07-26", text: "Einfacher Modus / Experten-Modus (Umschalter in der Kopfzeile) eingeführt: im Einfachen Modus reicht die Eingabe eines Stroms plus optionaler Filter (Hersteller/Charakteristik/Baugröße), das Tool zeigt direkt, welche Sicherungen aus der Bibliothek auslösen würden. Große Vorlagen-Datenbank (Button in der Sicherungsbibliothek) legt auf Knopfdruck viele leere Sicherungsdatensätze für gängige Baugröße/Klasse/Bemessungsstrom-Kombinationen an (ohne Kennlinien-/Herstellerdaten, diese bleiben urheberrechtlich zu befüllen). Bibliotheksliste jetzt filterbar. Glossar-Panel zeigt Einträge thematisch gruppiert." }
+  { v: "1.3.0", datum: "2026-07-26", text: "Einfacher Modus / Experten-Modus (Umschalter in der Kopfzeile) eingeführt: im Einfachen Modus reicht die Eingabe eines Stroms plus optionaler Filter (Hersteller/Charakteristik/Baugröße), das Tool zeigt direkt, welche Sicherungen aus der Bibliothek auslösen würden. Große Vorlagen-Datenbank (Button in der Sicherungsbibliothek) legt auf Knopfdruck viele leere Sicherungsdatensätze für gängige Baugröße/Klasse/Bemessungsstrom-Kombinationen an (ohne Kennlinien-/Herstellerdaten, diese bleiben urheberrechtlich zu befüllen). Bibliotheksliste jetzt filterbar. Glossar-Panel zeigt Einträge thematisch gruppiert." },
+  { v: "1.4.0", datum: "2026-07-26", text: "Anlagentopologie-Diagramm überarbeitet: deutlich kleinere Kacheln, frei per Ziehen (Maus/Finger) verschiebbar und beliebig anordenbar wie beim händischen Zeichnen eines Einpolschaltplans. Positionen werden je Knoten gespeichert (Export/Import, localStorage). Neuer Button „Automatisch anordnen“ setzt bei Bedarf auf die frühere Baum-Anordnung zurück." }
 ];
 
 /* =========================================================================
@@ -662,7 +668,10 @@ function neueLeitung(){
 // node.fuseId verweist auf die Sicherung in der Bibliothek, die GENAU DIESE Leitung schützt
 // (sie sitzt physisch im übergeordneten Verteiler).
 function neuerKnoten(typ, name){
-  return { id:neueId("n"), typ, name, leitung: typ==="einspeisung" ? null : neueLeitung(), fuseId:null, kinder:[] };
+  // pos: freie, per Ziehen verschiebbare Position auf der Zeichenfläche (Pixel-Koordinaten,
+  // Abschnitt 3 "Anlagentopologie"). null = noch nicht platziert, wird beim Rendern automatisch
+  // vergeben (ensureNodePositions) oder beim Anlegen relativ zum Elternknoten gesetzt (addNode).
+  return { id:neueId("n"), typ, name, leitung: typ==="einspeisung" ? null : neueLeitung(), fuseId:null, kinder:[], pos:null };
 }
 function neueTopologie(){
   return { root: neuerKnoten("einspeisung", "Netzeinspeisung") };
@@ -1385,6 +1394,9 @@ function addNode(typ){
   const label = typ==="hauptverteilung" ? "HV" : (typ==="unterverteilung" ? "UV" : "EK");
   const nummer = countKnotenOfTyp(STATE.topologie.root, typ)+1;
   const node = neuerKnoten(typ, label+nummer);
+  ensureNodePositions(STATE.topologie.root); // stellt sicher, dass der Elternknoten bereits eine Position hat
+  const siblingCount = (parent.kinder||[]).length;
+  node.pos = { x: (parent.pos.x||0) + siblingCount*(TILE_W+TILE_GAP_X), y: (parent.pos.y||0) + TILE_H + TILE_GAP_Y };
   parent.kinder.push(node);
   STATE.selectedNodeId = node.id;
   recompute();
@@ -1419,16 +1431,23 @@ function svgEl(tag, attrs){
   if(attrs) for(const k in attrs) e.setAttribute(k, attrs[k]);
   return e;
 }
-function layoutTopologie(root){
+
+// Kachelgröße und Raster für die frei verschiebbare Anlagentopologie ("Einpolplan"-artig).
+const TILE_W = 92, TILE_H = 40, TILE_GAP_X = 22, TILE_GAP_Y = 46, TILE_MARGIN = 24;
+const KNOTEN_FARBEN = { einspeisung:"#607d8b", hauptverteilung:"#0a5fb4", unterverteilung:"#00897b", endstromkreis:"#43a047" };
+const KNOTEN_KUERZEL = { einspeisung:"NETZ", hauptverteilung:"HV", unterverteilung:"UV", endstromkreis:"EK" };
+
+// Automatische Baum-Anordnung (nur als Startpunkt/Rücksetzoption) -- liefert Pixelpositionen.
+function berechneAutoLayoutPositionen(root){
   const positions = new Map();
   let maxDepth = 0;
   function countLeaves(node){ return (!node.kinder||node.kinder.length===0) ? 1 : node.kinder.reduce((s,k)=>s+countLeaves(k),0); }
   function place(node, depth, xStart, xEnd){
     maxDepth = Math.max(maxDepth, depth);
     const kids = node.kinder||[];
-    let x;
+    let xNorm;
     if(kids.length===0){
-      x = (xStart+xEnd)/2;
+      xNorm = (xStart+xEnd)/2;
     } else {
       const total = countLeaves(node);
       let cursor = xStart;
@@ -1438,42 +1457,71 @@ function layoutTopologie(root){
         centers.push(place(k, depth+1, cursor, cursor+w));
         cursor += w;
       });
-      x = centers.reduce((a,b)=>a+b,0)/centers.length;
+      xNorm = centers.reduce((a,b)=>a+b,0)/centers.length;
     }
-    positions.set(node.id, { x, y:depth });
-    return x;
+    positions.set(node.id, { xNorm, depth });
+    return xNorm;
   }
   place(root, 0, 0, 1);
-  return { positions, maxDepth, leafCount: countLeaves(root) };
+  const leafCount = countLeaves(root);
+  const totalW = Math.max(1, leafCount) * (TILE_W+TILE_GAP_X);
+  const pixelPositions = new Map();
+  positions.forEach((p, id)=>{
+    pixelPositions.set(id, {
+      x: TILE_MARGIN + p.xNorm*totalW - TILE_W/2,
+      y: TILE_MARGIN + p.depth*(TILE_H+TILE_GAP_Y)
+    });
+  });
+  return pixelPositions;
 }
+// Vergibt fehlenden Knoten (z.B. aus älteren gespeicherten Ständen ohne pos, oder frisch geladene
+// Importe) einmalig eine Startposition per Baum-Autolayout. Bereits gesetzte Positionen (vom
+// Anwender frei verschoben) bleiben unangetastet.
+function ensureNodePositions(root){
+  let fehlend = false;
+  (function check(node){ if(!node.pos) fehlend = true; (node.kinder||[]).forEach(check); })(root);
+  if(!fehlend) return;
+  const auto = berechneAutoLayoutPositionen(root);
+  (function apply(node){
+    if(!node.pos) node.pos = auto.get(node.id);
+    (node.kinder||[]).forEach(apply);
+  })(root);
+}
+document.getElementById("btnAutoArrange").addEventListener("click", ()=>{
+  if(!confirm("Alle Kacheln automatisch anordnen? Manuell verschobene Positionen gehen dabei verloren.")) return;
+  (function clear(node){ node.pos = null; (node.kinder||[]).forEach(clear); })(STATE.topologie.root);
+  ensureNodePositions(STATE.topologie.root);
+  renderTopoDiagram();
+  saveState();
+});
+
+let dragState = null; // { node, pointerId, startClientX, startClientY, startPos, moved }
 function renderTopoDiagram(){
   const svg = document.getElementById("topoDiagram");
   svg.innerHTML = "";
   const root = STATE.topologie.root;
-  const { positions, maxDepth, leafCount } = layoutTopologie(root);
-  const boxW=150, boxH=64, gapY=64, marginX=20, marginY=20;
-  const totalW = Math.max(1, leafCount) * (boxW+30) + marginX*2;
-  const totalH = (maxDepth+1)*(boxH+gapY) + marginY*2 - gapY;
-  svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+  ensureNodePositions(root);
 
-  function px(node){
-    const p = positions.get(node.id);
-    return { cx: marginX + p.x*(totalW-marginX*2), cy: marginY + p.y*(boxH+gapY) + boxH/2 };
-  }
-  const colors = { einspeisung:"#607d8b", hauptverteilung:"#0a5fb4", unterverteilung:"#00897b", endstromkreis:"#43a047" };
+  const alleKnoten = [];
+  (function sammeln(node){ alleKnoten.push(node); (node.kinder||[]).forEach(sammeln); })(root);
+  const maxX = Math.max(...alleKnoten.map(n=>n.pos.x)) + TILE_W + TILE_MARGIN;
+  const maxY = Math.max(...alleKnoten.map(n=>n.pos.y)) + TILE_H + TILE_MARGIN;
+  svg.setAttribute("viewBox", `0 0 ${maxX} ${maxY}`);
+  svg.setAttribute("width", maxX);
+  svg.setAttribute("height", maxY);
 
   function drawEdges(node){
-    const p0 = px(node);
     (node.kinder||[]).forEach(k=>{
-      const p1 = px(k);
+      const p0 = node.pos, p1 = k.pos;
+      const x0=p0.x+TILE_W/2, y0=p0.y+TILE_H, x1=p1.x+TILE_W/2, y1=p1.y;
       const path = svgEl("path", {
-        d:`M ${p0.cx} ${p0.cy+boxH/2} C ${p0.cx} ${p0.cy+boxH/2+gapY/2}, ${p1.cx} ${p1.cy-boxH/2-gapY/2}, ${p1.cx} ${p1.cy-boxH/2}`,
-        fill:"none", stroke:"#8892a0", "stroke-width":"2"
+        d:`M ${x0} ${y0} C ${x0} ${y0+TILE_GAP_Y/2}, ${x1} ${y1-TILE_GAP_Y/2}, ${x1} ${y1}`,
+        fill:"none", stroke:"#8892a0", "stroke-width":"1.5"
       });
       svg.appendChild(path);
       if(k.leitung){
-        const label = svgEl("text", { x:(p0.cx+p1.cx)/2+4, y:(p0.cy+p1.cy)/2, "font-size":"10", fill:"#8892a0" });
-        label.textContent = `${k.leitung.l_m} m, ${k.leitung.A_L} mm²`;
+        const label = svgEl("text", { x:(x0+x1)/2+3, y:(y0+y1)/2, "font-size":"8", fill:"#8892a0" });
+        label.textContent = `${k.leitung.l_m}m/${k.leitung.A_L}mm²`;
         svg.appendChild(label);
       }
       drawEdges(k);
@@ -1482,27 +1530,51 @@ function renderTopoDiagram(){
   drawEdges(root);
 
   function drawNode(node){
-    const p = px(node);
     const selected = node.id === STATE.selectedNodeId;
-    const g = svgEl("g", { style:"cursor:pointer;" });
-    g.appendChild(svgEl("rect", { x:p.cx-boxW/2, y:p.cy-boxH/2, width:boxW, height:boxH, rx:10,
-      fill: colors[node.typ]||"#888", stroke: selected?"#ffcc00":"#00000030", "stroke-width": selected?4:1 }));
-    const t1 = svgEl("text", { x:p.cx, y:p.cy-8, "text-anchor":"middle", "font-size":"13", "font-weight":"700", fill:"#fff" });
+    const isDragging = dragState && dragState.node.id === node.id;
+    const g = svgEl("g", { class:"knoten-tile"+(isDragging?" dragging":"") });
+    g.appendChild(svgEl("rect", { x:node.pos.x, y:node.pos.y, width:TILE_W, height:TILE_H, rx:6,
+      fill: KNOTEN_FARBEN[node.typ]||"#888", stroke: selected?"#ffcc00":"#00000030", "stroke-width": selected?3:1 }));
+    const cx = node.pos.x+TILE_W/2;
+    const t1 = svgEl("text", { x:cx, y:node.pos.y+16, "text-anchor":"middle", "font-size":"11", "font-weight":"700", fill:"#fff" });
     t1.textContent = node.name; g.appendChild(t1);
-    const t2 = svgEl("text", { x:p.cx, y:p.cy+8, "text-anchor":"middle", "font-size":"10", fill:"#ffffffd0" });
-    t2.textContent = knotenTypLabel(node.typ); g.appendChild(t2);
-    const erg = ERG_CACHE.get(node.id);
-    if(erg){
-      const t3 = svgEl("text", { x:p.cx, y:p.cy+22, "text-anchor":"middle", "font-size":"9", fill:"#ffffffd0" });
-      t3.textContent = `Ik3max ${fmt(erg.Ik3max_kA,1)}kA · Ik1min ${fmt(erg.Ik1min_A,0)}A`;
-      g.appendChild(t3);
-    }
-    g.addEventListener("click", ()=>selectNode(node.id));
+    const t2 = svgEl("text", { x:cx, y:node.pos.y+29, "text-anchor":"middle", "font-size":"8", fill:"#ffffffd0" });
+    t2.textContent = KNOTEN_KUERZEL[node.typ]||node.typ; g.appendChild(t2);
+
+    g.addEventListener("pointerdown", (ev)=>{
+      ev.preventDefault();
+      svg.setPointerCapture(ev.pointerId);
+      dragState = { node, pointerId:ev.pointerId, startClientX:ev.clientX, startClientY:ev.clientY, startPos:{...node.pos}, moved:false };
+      renderTopoDiagram();
+    });
     svg.appendChild(g);
     (node.kinder||[]).forEach(drawNode);
   }
   drawNode(root);
 }
+(function initDiagrammDrag(){
+  const svg = document.getElementById("topoDiagram");
+  let rafPending = false;
+  svg.addEventListener("pointermove", (ev)=>{
+    if(!dragState || ev.pointerId!==dragState.pointerId) return;
+    const dx = ev.clientX-dragState.startClientX, dy = ev.clientY-dragState.startClientY;
+    if(Math.abs(dx)>3||Math.abs(dy)>3) dragState.moved = true;
+    dragState.node.pos = { x: Math.max(0, dragState.startPos.x+dx), y: Math.max(0, dragState.startPos.y+dy) };
+    if(!rafPending){
+      rafPending = true;
+      requestAnimationFrame(()=>{ rafPending=false; if(dragState) renderTopoDiagram(); });
+    }
+  });
+  function endDrag(ev){
+    if(!dragState || (ev.pointerId!=null && ev.pointerId!==dragState.pointerId)) return;
+    const wasMoved = dragState.moved, node = dragState.node;
+    dragState = null;
+    if(wasMoved){ saveState(); renderTopoDiagram(); }
+    else { selectNode(node.id); }
+  }
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+})();
 
 function fieldWrap(labelTxt, inputEl, infoKey){
   const wrap = el("div", { class:"field" });

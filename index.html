@@ -30,6 +30,23 @@
     --warn-bg:#3a2f06; --warn-ink:#ffd876; --warn-line:#c99a00;
   }
 }
+/* Manueller Theme-Umschalter (z.B. Artifact-Hosting-Umgebung) hat Vorrang vor der OS-Einstellung. */
+:root[data-theme="dark"]{
+  --bg:#14181b; --panel:#1e2327; --ink:#f0f2f4; --ink-soft:#c3cad0;
+  --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f; --accent-hover-bg:rgba(77,163,255,.18);
+  --ok-bg:#123a1c; --ok-ink:#8be09e; --ok-line:#1e9a41;
+  --bad-bg:#3d1414; --bad-ink:#ff9d9d; --bad-line:#c62828;
+  --na-bg:#2a2e31; --na-ink:#b7bcc0; --na-line:#666;
+  --warn-bg:#3a2f06; --warn-ink:#ffd876; --warn-line:#c99a00;
+}
+:root[data-theme="light"]{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#101418; --ink-soft:#3c454d;
+  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff; --accent-hover-bg:rgba(10,95,180,.14);
+  --ok-bg:#d6f3dc; --ok-ink:#0d5c22; --ok-line:#1e9a41;
+  --bad-bg:#fbdada; --bad-ink:#7a0e0e; --bad-line:#c62828;
+  --na-bg:#e8e8e8; --na-ink:#444; --na-line:#999;
+  --warn-bg:#fff2cc; --warn-ink:#7a5b00; --warn-line:#c99a00;
+}
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{

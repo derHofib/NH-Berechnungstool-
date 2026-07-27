@@ -153,10 +153,12 @@ textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
 .ac-only{display:block;}
 #topoDiagramWrap{overflow:auto; max-height:65vh; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
 #topoDiagram{display:block;}
-#topoDiagram .knoten-tile{touch-action:none; cursor:grab;}
-#topoDiagram .knoten-tile.dragging{cursor:grabbing;}
-#topoDiagram .kanten-label{font-size:8px; fill:var(--ink-soft);}
-#topoDiagram .kanten-label-bg{fill:var(--bg); fill-opacity:0.95;}
+/* .topo-svg statt #topoDiagram, damit dieselbe Gestaltung auch für den geklonten Diagramm-
+   Schnappschuss im Prüfprotokoll gilt (dort ohne id, um doppelte IDs im Dokument zu vermeiden). */
+.topo-svg .knoten-tile{touch-action:none; cursor:grab;}
+.topo-svg .knoten-tile.dragging{cursor:grabbing;}
+.topo-svg .kanten-label{font-size:8px; fill:var(--ink-soft);}
+.topo-svg .kanten-label-bg{fill:var(--bg); fill-opacity:0.95;}
 .modeswitch{display:flex; gap:.3em;}
 .modeswitch button{
   background:transparent; border:1px solid rgba(255,255,255,.6); color:inherit; min-height:36px; font-weight:600;
@@ -172,18 +174,46 @@ body.mode-experte .mode-einfach{display:none !important;}
 .einfach-ergebnis-card .titlerow{display:flex; justify-content:space-between; font-weight:700; gap:.5em; flex-wrap:wrap;}
 footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem; color:var(--ink-soft);}
 
-/* Print stylesheet */
+/* Druckprotokoll: auf dem Bildschirm unsichtbar, erscheint nur beim Drucken/PDF-Export
+   (Abschnitt "Protokoll & Datenaustausch"). Bewusst getrennt vom Bearbeitungsbereich, damit
+   der Ausdruck wie ein eigenständiges, sauberes Dokument aussieht statt wie ein Seitenauszug. */
+#protokollDruck{display:none;}
+.proto-briefkopf{display:flex; align-items:center; gap:1em; margin-bottom:1em; padding-bottom:.8em; border-bottom:3px solid var(--accent);}
+.proto-briefkopf img{max-height:64px; max-width:220px; object-fit:contain;}
+.proto-briefkopf .proto-titel{font-size:1.4rem; font-weight:800; margin:0;}
+.proto-briefkopf .proto-untertitel{font-size:.85rem; color:var(--ink-soft);}
+#protokollDruck h3{margin-top:1.4em; border-bottom:1px solid var(--line); padding-bottom:.2em;}
+.proto-knoten-block{border:1px solid var(--line); border-radius:8px; padding:.6em .9em; margin-bottom:.7em;}
+.proto-knoten-block h4{margin:0 0 .4em 0;}
+.proto-ampel-row{display:flex; justify-content:space-between; gap:1em; border-left:4px solid var(--na-line); padding:.15em .6em; margin-bottom:.25em; font-size:.85rem;}
+.proto-ampel-row.ok{border-left-color:var(--ok-line);}
+.proto-ampel-row.bad{border-left-color:var(--bad-line); font-weight:700;}
+.proto-ampel-row .proto-status{white-space:nowrap; font-weight:700;}
+.proto-svg-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px; padding:.5em; background:var(--bg);}
+.proto-svg-wrap svg{max-width:100%; height:auto; display:block;}
+.proto-chart-img{max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px;}
+.proto-disclaimer{font-size:.8rem; font-style:italic; margin-top:1.5em;}
+.proto-unterschrift{margin-top:3em;}
+.proto-fusszeile{font-size:.75rem; color:var(--ink-soft); margin-top:2em; border-top:1px solid var(--line); padding-top:.5em;}
+
 @media print{
-  header#topbar, .no-print, #debugPanel, #legalOverlay{display:none !important;}
-  body{background:#fff; color:#000; padding:0;}
-  section.panel{border:1px solid #000; break-inside:avoid; box-shadow:none;}
-  .grid2{grid-template-columns:1fr !important;}
+  header#topbar, footer#appfooter, #arbeitsbereich, #legalOverlay{display:none !important;}
+  body{background:#fff; color:#000; padding:0; font-size:10.5pt;}
+  #protokollDruck{display:block !important; max-width:none; margin:0; padding:0; border:none; box-shadow:none; break-inside:auto;}
   a{color:#000; text-decoration:none;}
-  @page{size:A4; margin:14mm;}
-  .ampel.ok{background:#fff !important; border:2px solid #000 !important;}
-  .ampel.bad{background:#eee !important; border:2px solid #000 !important; font-weight:700;}
-  .ampel.na{background:#fff !important; border:1px dashed #000 !important;}
-  canvas#chart{border:1px solid #000;}
+  @page{size:A4; margin:16mm 14mm;}
+  #protokollDruck table{font-size:9.5pt;}
+  #protokollDruck table th, #protokollDruck table td{border:1px solid #000; padding:.3em .5em;}
+  .proto-briefkopf{border-bottom-color:#000;}
+  .proto-knoten-block{border-color:#000; break-inside:avoid;}
+  .proto-ampel-row{border-left-color:#999;}
+  .proto-ampel-row.ok{border-left-color:#000;}
+  .proto-ampel-row.bad{border-left-color:#000; border-left-width:6px;}
+  .proto-svg-wrap, .proto-chart-img{border-color:#000; background:#fff;}
+  /* Diagramm im Protokoll immer hell darstellen, unabhängig vom aktuell aktiven Bildschirm-Theme. */
+  .proto-svg-wrap .kanten-label-bg{fill:#fff;}
+  .proto-svg-wrap .kanten-label{fill:#333;}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
 }
 </style>
 </head>
@@ -217,6 +247,8 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
 </header>
 
 <div id="app">
+
+<div id="arbeitsbereich">
 
 <section class="panel" id="glossarPanel">
   <h2>Glossar / Wiki der Datenpunkte</h2>
@@ -331,7 +363,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
   <p class="hinweis">Kacheln lassen sich frei per Ziehen (Maus/Finger) verschieben und beliebig anordnen — wie beim
   händischen Zeichnen eines Einpolschaltplans. Die Zeichenfläche lässt sich bei Bedarf scrollen.</p>
-  <div id="topoDiagramWrap"><svg id="topoDiagram"></svg></div>
+  <div id="topoDiagramWrap"><svg id="topoDiagram" class="topo-svg"></svg></div>
   <div id="nodeEditor"></div>
 </section>
 
@@ -382,19 +414,21 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
 </section>
 
-<section class="panel mode-experte" id="protokollDruck">
-  <h2>Prüfprotokoll</h2>
+</div>
+
+<section class="panel print-only" id="protokollDruck">
   <div id="protoHead"></div>
   <div id="protoEingaben"></div>
+  <div id="protoTopologie"></div>
   <div id="protoErgebnisse"></div>
   <div id="protoBewertung"></div>
+  <div id="protoSicherungen"></div>
   <div id="protoKennlinie"></div>
-  <p class="small">Berechnung ersetzt keine Messung an der errichteten Anlage nach DIN VDE 0100-600.</p>
-  <p class="small">Kennlinienquelle(n) / Datenstand: <span id="protoQuelle"></span></p>
-  <div class="row" style="margin-top:2em;">
-    <div class="field">_____________________________<br>Unterschrift Elektrofachkraft, Datum</div>
+  <p class="proto-disclaimer">Diese Berechnung ersetzt keine Messung an der errichteten Anlage nach DIN VDE 0100-600. Die Verantwortung für Auslegung und Bewertung verbleibt bei der ausführenden Elektrofachkraft (siehe Startdialog des Tools).</p>
+  <div class="proto-unterschrift">
+    <div>_____________________________<br>Unterschrift Elektrofachkraft, Datum</div>
   </div>
-  <p class="small" id="protoFooter"></p>
+  <p class="proto-fusszeile" id="protoFooter"></p>
 </section>
 
 </div>
@@ -412,7 +446,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
    ============================================================================================ */
 "use strict";
 
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.5.0";
 const CHANGELOG = [
   { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." },
   { v: "1.1.0", datum: "2026-07-26", text: "Anlagentopologie (Baumstruktur Einspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise) mit visuellem SVG-Diagramm ersetzt die frühere lineare Leitungsstrecke. Leitungsdaten und Sicherungszuordnung werden je Knoten in dessen Einstellungen bearbeitet (Klick/Tipp auf den Knoten im Diagramm). Automatische Migration älterer gespeicherter Berechnungsfälle." },
@@ -420,7 +454,8 @@ const CHANGELOG = [
   { v: "1.3.0", datum: "2026-07-26", text: "Einfacher Modus / Experten-Modus (Umschalter in der Kopfzeile) eingeführt: im Einfachen Modus reicht die Eingabe eines Stroms plus optionaler Filter (Hersteller/Charakteristik/Baugröße), das Tool zeigt direkt, welche Sicherungen aus der Bibliothek auslösen würden. Große Vorlagen-Datenbank (Button in der Sicherungsbibliothek) legt auf Knopfdruck viele leere Sicherungsdatensätze für gängige Baugröße/Klasse/Bemessungsstrom-Kombinationen an (ohne Kennlinien-/Herstellerdaten, diese bleiben urheberrechtlich zu befüllen). Bibliotheksliste jetzt filterbar. Glossar-Panel zeigt Einträge thematisch gruppiert." },
   { v: "1.4.0", datum: "2026-07-26", text: "Anlagentopologie-Diagramm überarbeitet: deutlich kleinere Kacheln, frei per Ziehen (Maus/Finger) verschiebbar und beliebig anordenbar wie beim händischen Zeichnen eines Einpolschaltplans. Positionen werden je Knoten gespeichert (Export/Import, localStorage). Neuer Button „Automatisch anordnen“ setzt bei Bedarf auf die frühere Baum-Anordnung zurück." },
   { v: "1.4.1", datum: "2026-07-26", text: "Leitungsbeschriftungen (Länge/Querschnitt) im Topologie-Diagramm erhalten einen Hintergrund-Chip in Diagrammfarbe, damit die Verbindungslinie darunter nicht mehr mit dem Text überlappt -- auch bei frei verschobenen, diagonalen Verbindungen bleibt die Beschriftung klar lesbar." },
-  { v: "1.4.2", datum: "2026-07-26", text: "Malreihenfolge im Topologie-Diagramm korrigiert: ALLE Verbindungslinien werden jetzt in einem Durchlauf vor ALLEN Beschriftungen gezeichnet. Zuvor konnte bei sich kreuzenden/überlappenden Linien (durch freies Verschieben der Kacheln) eine fremde Linie über einer bereits gezeichneten Beschriftung liegen und sie unlesbar machen." }
+  { v: "1.4.2", datum: "2026-07-26", text: "Malreihenfolge im Topologie-Diagramm korrigiert: ALLE Verbindungslinien werden jetzt in einem Durchlauf vor ALLEN Beschriftungen gezeichnet. Zuvor konnte bei sich kreuzenden/überlappenden Linien (durch freies Verschieben der Kacheln) eine fremde Linie über einer bereits gezeichneten Beschriftung liegen und sie unlesbar machen." },
+  { v: "1.5.0", datum: "2026-07-27", text: "Prüfprotokoll (Druck/PDF-Export) grundlegend überarbeitet: erscheint jetzt als eigenständiges Dokument mit Briefkopf (Firmenlogo, Titel, Anlagendaten) statt als Ausdruck der gesamten Bearbeitungsoberfläche. Eingaben werden je Netzeinspeisungs-Modus sauber tabellarisch dargestellt statt als Rohdaten-Dump. Die Anlagentopologie wird als Diagramm eingebettet, die Bewertungsübersicht zeigt jetzt tatsächlich die berechneten Ergebnisse aller sechs Prüfungen je Knoten (zuvor nur ein Verweis auf den Bildschirmbereich), eine Tabelle der verwendeten Sicherungen mit Quelle/Datenstand sowie das Zeit-Strom-Kennliniendiagramm als Bild sind neu hinzugekommen." }
 ];
 
 /* =========================================================================
@@ -1935,6 +1970,27 @@ function sammleNetzInput(){
 }
 
 /* ---- Ergebnisdarstellung + Bewertung ---- */
+// Wertet einen Knoten vollständig aus (Sicherung, Leitungsdaten, geforderte Abschaltzeit,
+// vorgelagerte Sicherung, Bewertungslogik Abschnitt 6). Zentrale, einzige Implementierung --
+// wird sowohl von der interaktiven Ergebnisdarstellung (recompute) als auch vom druckbaren
+// Prüfprotokoll (renderProtokoll) verwendet, damit beide garantiert dieselben Werte zeigen.
+function berechneKnotenBewertung(erg, netzform){
+  const node = erg.node;
+  const fuse = fuseById(node.fuseId);
+  const hasLeitung = !!node.leitung;
+  const material = hasLeitung ? node.leitung.material : null;
+  const isoliert = hasLeitung ? node.leitung.isoliert : null;
+  const A_L = hasLeitung ? node.leitung.A_L : null;
+  const Iz_A = hasLeitung ? node.leitung.Iz_A : null;
+  const stossstromfestigkeit_kA = hasLeitung ? node.leitung.stossstromfestigkeit_kA : null;
+  const stromkreisart = hasLeitung ? (node.leitung.stromkreisart||"Endstromkreis") : "Endstromkreis";
+  const zeitConf = NORM.abschaltzeiten[netzform] || NORM.abschaltzeiten["TN-S"];
+  const geforderteZeit_s = stromkreisart==="Endstromkreis" ? zeitConf.endstromkreis_s : zeitConf.verteilung_s;
+  const vorgelagerteFuse = erg.parentNode ? fuseById(erg.parentNode.fuseId) : null;
+  const bew = fuse ? bewerteKnoten({ knotenErg:erg, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }) : null;
+  return { node, fuse, bew, geforderteZeit_s, vorgelagerteFuse, hasLeitung, material, isoliert, A_L, Iz_A, stossstromfestigkeit_kA };
+}
+
 function recompute(){
   const topo = aktuelleTopologie();
   if(!topo) return;
@@ -1944,21 +2000,7 @@ function recompute(){
   host.innerHTML = "";
 
   topo.flatList.forEach((erg)=>{
-    const node = erg.node;
-    const fuse = fuseById(node.fuseId);
-    const hasLeitung = !!node.leitung;
-    const material = hasLeitung ? node.leitung.material : null;
-    const isoliert = hasLeitung ? node.leitung.isoliert : null;
-    const A_L = hasLeitung ? node.leitung.A_L : null;
-    const Iz_A = hasLeitung ? node.leitung.Iz_A : null;
-    const stossstromfestigkeit_kA = hasLeitung ? node.leitung.stossstromfestigkeit_kA : null;
-    const stromkreisart = hasLeitung ? (node.leitung.stromkreisart||"Endstromkreis") : "Endstromkreis";
-    const zeitConf = NORM.abschaltzeiten[netzform] || NORM.abschaltzeiten["TN-S"];
-    const geforderteZeit_s = stromkreisart==="Endstromkreis" ? zeitConf.endstromkreis_s : zeitConf.verteilung_s;
-
-    const vorgelagerteFuse = erg.parentNode ? fuseById(erg.parentNode.fuseId) : null;
-
-    const bew = fuse ? bewerteKnoten({ knotenErg:erg, fuse, material, A_L, isoliert, Iz_A, geforderteZeit_s, vorgelagerteFuse, stossstromfestigkeit_kA }) : null;
+    const { node, fuse, bew, geforderteZeit_s } = berechneKnotenBewertung(erg, netzform);
 
     const card = el("div", { class:"card" });
     const headRow = el("div", { class:"card-head" });
@@ -2156,25 +2198,116 @@ function drawChart(){
 }
 window.addEventListener("resize", ()=>drawChart());
 
-/* ---- Protokoll ---- */
+/* ---- Prüfprotokoll (druckbares Dokument, Abschnitt 8 Lastenheft) ---- */
+function protoAmpelZeile(titel, res){
+  if(!res) return "";
+  const cls = res.status==="ok" ? "ok" : (res.status==="bad" ? "bad" : "na");
+  const statusText = res.status==="ok" ? "bestanden" : (res.status==="bad" ? "nicht bestanden" : "nicht anwendbar");
+  return `<div class="proto-ampel-row ${cls}"><span>${escapeHtml(titel)}${res.text?" — "+escapeHtml(res.text):""}</span><span class="proto-status">${statusText}</span></div>`;
+}
 function renderProtokoll(topo, netzform){
+  // -- Briefkopf: Firmenlogo + Titel + Anlagendaten --
+  const logoHtml = STATE.logoBase64 ? `<img src="${STATE.logoBase64}" alt="Firmenlogo">` : "";
   document.getElementById("protoHead").innerHTML = `
+    <div class="proto-briefkopf">
+      ${logoHtml}
+      <div>
+        <div class="proto-titel">Prüfprotokoll – Kurzschlussstromberechnung</div>
+        <div class="proto-untertitel">Berechnung und Bewertung nach DIN EN 60909-0 (VDE 0102) und DIN EN 60269 (VDE 0636)</div>
+      </div>
+    </div>
     <table>
-      <tr><th>Kunde</th><td>${escapeHtml(document.getElementById("f_kunde").value)}</td><th>Anlage</th><td>${escapeHtml(document.getElementById("f_anlage").value)}</td></tr>
-      <tr><th>Anlagenteil</th><td>${escapeHtml(document.getElementById("f_anlagenteil").value)}</td><th>Netzform</th><td>${netzform}</td></tr>
-      <tr><th>Prüfer</th><td>${escapeHtml(document.getElementById("f_pruefer").value)}</td><th>Datum</th><td>${escapeHtml(document.getElementById("f_datum").value)}</td></tr>
+      <tr><th>Kunde</th><td>${escapeHtml(document.getElementById("f_kunde").value)||"—"}</td><th>Anlage</th><td>${escapeHtml(document.getElementById("f_anlage").value)||"—"}</td></tr>
+      <tr><th>Anlagenteil</th><td>${escapeHtml(document.getElementById("f_anlagenteil").value)||"—"}</td><th>Netzform</th><td>${netzform}</td></tr>
+      <tr><th>Prüfer</th><td>${escapeHtml(document.getElementById("f_pruefer").value)||"—"}</td><th>Datum</th><td>${escapeHtml(document.getElementById("f_datum").value)||"—"}</td></tr>
     </table>`;
-  document.getElementById("protoEingaben").innerHTML = `<h3>Eingaben Netzeinspeisung (Modus ${STATE.netzModus})</h3><pre>${escapeHtml(JSON.stringify(sammleNetzInput().netz,null,2))}</pre>`;
+
+  // -- Eingaben Netzeinspeisung, sauber formatiert je Modus (nicht als Rohdaten-Dump) --
+  const { netz, c_max } = sammleNetzInput();
+  let eRows = `<tr><th>Modus</th><td>${STATE.netzModus} — ${STATE.netzModus==="A"?"Netzangabe":(STATE.netzModus==="B"?"Transformator":"Messung (ZS)")}</td></tr>`;
+  if(STATE.netzModus==="A"){
+    eRows += `<tr><th>Ik" am Übergabepunkt</th><td>${fmt(netz.Ik3_kA)} kA</td></tr>
+      <tr><th>R/X-Verhältnis</th><td>${fmt(netz.RX,3)}</td></tr>
+      <tr><th>Un am Übergabepunkt</th><td>${fmt(netz.Un_V,0)} V</td></tr>`;
+  } else if(STATE.netzModus==="B"){
+    eRows += `<tr><th>Sk"Q vorgelagert</th><td>${fmt(netz.SkQ_MVA,1)} MVA</td></tr>
+      <tr><th>R/X-Verhältnis Netz</th><td>${fmt(netz.RXq,3)}</td></tr>
+      <tr><th>Un Oberspannungsseite</th><td>${fmt(netz.Un_HV_V,0)} V</td></tr>
+      <tr><th>SrT</th><td>${fmt(netz.SrT_kVA,0)} kVA</td></tr>
+      <tr><th>ukr</th><td>${fmt(netz.ukr_pct,2)} %</td></tr>
+      <tr><th>PkrT</th><td>${fmt(netz.PkrT_kW,2)} kW</td></tr>
+      <tr><th>Un Unterspannungsseite</th><td>${fmt(netz.Un_LV_V,0)} V</td></tr>`;
+  } else {
+    eRows += `<tr><th>Gemessene Schleifenimpedanz ZS</th><td>${fmt(netz.ZS_gemessen_Ohm,4)} Ω (gemessen)</td></tr>
+      <tr><th>R/X-Verhältnis (angenommen)</th><td>${fmt(netz.RX_gemessen,3)}</td></tr>
+      <tr><th>Un am Messpunkt</th><td>${fmt(netz.Un_V,0)} V</td></tr>`;
+  }
+  eRows += `<tr><th>c-Faktor</th><td>c_max = ${fmt(c_max,2)}; c_min = ${NORM.c_min} (fest, DIN EN 60909-0)</td></tr>`;
+  document.getElementById("protoEingaben").innerHTML = `<h3>Eingaben Netzeinspeisung</h3><table>${eRows}</table>`;
+
+  // -- Anlagentopologie: das aktuelle Diagramm 1:1 in das Protokoll übernehmen --
+  const liveSvg = document.getElementById("topoDiagram");
+  const svgClone = liveSvg ? liveSvg.cloneNode(true) : null;
+  if(svgClone) svgClone.removeAttribute("id");
+  const topoHost = document.getElementById("protoTopologie");
+  topoHost.innerHTML = "<h3>Anlagentopologie</h3>";
+  if(svgClone){
+    const wrap = el("div", { class:"proto-svg-wrap" });
+    wrap.appendChild(svgClone);
+    topoHost.appendChild(wrap);
+  }
+
+  // -- Ergebnisse je Knoten --
   let rows = "";
   topo.flatList.forEach(erg=>{
-    rows += `<tr><td>${"— ".repeat(erg.depth)}${escapeHtml(erg.name)}</td><td>${knotenTypLabel(erg.typ)}</td><td>${fmt(erg.Ik3max_kA)}</td><td>${fmt(erg.Ik2_kA)}</td><td>${fmt(erg.Ik1min_A,1)}</td><td>${fmt(erg.ZS_min_Ohm,4)}</td><td>${fmt(erg.ip_kA)}</td></tr>`;
+    const eingerueckterName = `<span style="padding-left:${erg.depth*1.3}em">${erg.depth>0?"↳ ":""}${escapeHtml(erg.name)}</span>`;
+    rows += `<tr><td>${eingerueckterName}</td><td>${knotenTypLabel(erg.typ)}</td><td>${fmt(erg.Ik3max_kA)}</td><td>${fmt(erg.Ik2_kA)}</td><td>${fmt(erg.Ik1min_A,1)}</td><td>${fmt(erg.ZS_min_Ohm,4)}</td><td>${fmt(erg.ip_kA)}</td></tr>`;
   });
   document.getElementById("protoErgebnisse").innerHTML = `<h3>Ergebnisse je Knoten</h3>
     <table><tr><th>Knoten</th><th>Typ</th><th>Ik3max [kA]</th><th>Ik2 [kA]</th><th>Ik1min [A]</th><th>ZS(min) [Ω]</th><th>ip [kA]</th></tr>${rows}</table>`;
-  document.getElementById("protoBewertung").innerHTML = `<h3>Bewertungsübersicht</h3><p class="small">Siehe Ampel-Panels je Knoten im Ergebnisbereich (Abschnitt 5) — beim Drucken werden diese mit ausgegeben, da <code>#ergebnisse</code> Teil des Ausdrucks ist.</p>`;
-  const quellen = STATE.fuseLibrary.filter(f=> topo.flatList.some(erg=>erg.node.fuseId===f.id)).map(f=>`${f.hersteller} ${f.typbezeichnung} (Stand ${f.stand||"—"}, Quelle: ${f.quelle||"—"})`).join("; ");
-  document.getElementById("protoQuelle").textContent = quellen || "keine Sicherung zugeordnet";
-  document.getElementById("protoFooter").textContent = `Version ${APP_VERSION} · Berechnet am ${new Date().toLocaleString("de-DE")}`;
+
+  // -- Bewertungsübersicht: dieselbe Auswertung wie im interaktiven Ergebnisbereich (Abschnitt 6) --
+  let bewHtml = "<h3>Bewertungsübersicht</h3>";
+  let bewertetKnoten = 0;
+  topo.flatList.forEach(erg=>{
+    const { fuse, bew } = berechneKnotenBewertung(erg, netzform);
+    if(!fuse || !bew) return;
+    bewertetKnoten++;
+    bewHtml += `<div class="proto-knoten-block"><h4>${knotenTypLabel(erg.typ)}: ${escapeHtml(erg.name)} — ${escapeHtml(fuse.hersteller||"?")} ${escapeHtml(fuse.typbezeichnung||"")} (${fuse.klasse} ${fuse.baugroesse}${fuse.In_A?", "+fuse.In_A+" A":""})</h4>`;
+    bewHtml += protoAmpelZeile("1. Abschaltbedingung", bew.abschaltbedingung);
+    bewHtml += protoAmpelZeile("2. Ausschaltvermögen", bew.ausschaltvermoegen);
+    bewHtml += protoAmpelZeile("3. Überlastschutz der Leitung", bew.ueberlastschutz);
+    bewHtml += protoAmpelZeile("4. Thermische Kurzschlussfestigkeit", bew.thermisch);
+    bewHtml += protoAmpelZeile("5. Selektivität", bew.selektivitaet);
+    bewHtml += protoAmpelZeile("6a. Dynamische Beanspruchung (ip)", bew.dynamisch.ip_pruefung);
+    bewHtml += protoAmpelZeile("6b. Begrenzter Durchlassstrom Id", bew.dynamisch.durchlassstrom);
+    klassenWarnungen(fuse).forEach(w=> bewHtml += `<div class="proto-ampel-row bad">⚠ ${escapeHtml(w)}</div>`);
+    bewHtml += `</div>`;
+  });
+  if(!bewertetKnoten) bewHtml += `<p class="hinweis">Keinem Knoten ist eine Sicherung zugeordnet -- keine Bewertung möglich.</p>`;
+  document.getElementById("protoBewertung").innerHTML = bewHtml;
+
+  // -- Verwendete Sicherungen inkl. Quelle/Datenstand (Pflichtangabe Abschnitt 10 Lastenheft) --
+  const verwendet = STATE.fuseLibrary.filter(f=> topo.flatList.some(erg=>erg.node.fuseId===f.id));
+  let sRows = "";
+  verwendet.forEach(f=>{
+    sRows += `<tr><td>${escapeHtml(f.hersteller)||"—"}</td><td>${escapeHtml(f.typbezeichnung)||"—"}</td><td>${f.klasse} ${f.baugroesse}</td><td>${escapeHtml(f.quelle)||"—"}</td><td>${escapeHtml(f.stand)||"—"}</td></tr>`;
+  });
+  document.getElementById("protoSicherungen").innerHTML = `<h3>Verwendete Sicherungen — Datenquelle</h3>
+    ${verwendet.length ? `<table><tr><th>Hersteller</th><th>Typ</th><th>Klasse/Baugröße</th><th>Quelle</th><th>Stand</th></tr>${sRows}</table>` : `<p class="hinweis">Keine Sicherung zugeordnet.</p>`}`;
+
+  // -- Zeit-Strom-Kennliniendiagramm als Bild einbetten --
+  const chartCanvas = document.getElementById("chart");
+  const chartSel = document.getElementById("chartNode");
+  const chartLabel = chartSel && chartSel.selectedIndex>=0 ? chartSel.options[chartSel.selectedIndex].textContent : "";
+  let chartHtml = "<h3>Zeit-Strom-Kennliniendiagramm</h3>";
+  if(chartLabel) chartHtml += `<p class="small">Dargestellter Knoten: ${escapeHtml(chartLabel)}</p>`;
+  try{
+    chartHtml += `<img class="proto-chart-img" src="${chartCanvas.toDataURL("image/png")}" alt="Zeit-Strom-Kennliniendiagramm">`;
+  }catch(e){ /* toDataURL kann in Ausnahmefällen fehlschlagen (z.B. leeres Canvas) -- dann ohne Bild fortfahren */ }
+  document.getElementById("protoKennlinie").innerHTML = chartHtml;
+
+  document.getElementById("protoFooter").textContent = `NH-Kurzschlussstromrechner Version ${APP_VERSION} · Berechnet am ${new Date().toLocaleString("de-DE")}`;
 }
 function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 

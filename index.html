@@ -104,10 +104,26 @@ header#topbar .meta{font-size:.75rem; opacity:.9;}
 #app{max-width:1400px; margin:0 auto; padding:1em;}
 .grid2{display:grid; grid-template-columns:1fr; gap:1em;}
 @media(min-width:980px){ .grid2{grid-template-columns:1fr 1fr;} .grid2 > .span2{grid-column:1/-1;} }
-section.panel{
+section.panel, details.panel{
   background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
   padding:1em; margin-bottom:1em;
 }
+/* Auf-/zuklappbare Abschnitte (details/summary): eigener Chevron statt Browser-Standardmarker,
+   h2 bleibt in der summary-Zeile klickbar und behält seinen Abstand nach unten nur im geöffneten Zustand. */
+details.panel > summary{
+  list-style:none; cursor:pointer; min-height:var(--tap); display:flex; align-items:center;
+  margin:-1em -1em 0 -1em; padding:1em; border-radius:var(--radius);
+}
+details.panel > summary::-webkit-details-marker{display:none;}
+details.panel > summary::before{
+  content:"▸"; display:inline-block; margin-right:.5em; color:var(--accent); font-size:.85em;
+  transition:transform .15s ease; flex:0 0 auto;
+}
+details.panel[open] > summary::before{ transform:rotate(90deg); }
+details.panel > summary h2{ margin:0; border-bottom:none; padding-bottom:0; }
+details.panel[open] > summary{ margin-bottom:1em; border-bottom:2px solid var(--line); padding-bottom:.8em; }
+details.panel > summary:hover{ background:var(--accent-hover-bg); }
+details.panel > summary:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
 .card{border:1px solid var(--line); border-radius:var(--radius); padding:.8em; margin-bottom:.6em; background:var(--bg);}
 .card-head{display:flex; justify-content:space-between; align-items:center; gap:.5em; margin-bottom:.4em;}
 .tag{display:inline-block; padding:.15em .5em; border-radius:6px; font-size:.75rem; font-weight:700; border:1px solid var(--line);}
@@ -282,8 +298,8 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   <div id="einfachErgebnis"></div>
 </section>
 
-<section class="panel mode-experte">
-  <h2>1. Anlagen- und Auftragsdaten</h2>
+<details class="panel mode-experte" open id="sec-anlagendaten">
+  <summary><h2>1. Anlagen- und Auftragsdaten</h2></summary>
   <div class="row">
     <div class="field"><label>Kunde <button type="button" class="infobtn" data-info="kunde">ⓘ</button></label><input id="f_kunde"></div>
     <div class="field"><label>Anlage <button type="button" class="infobtn" data-info="anlage">ⓘ</button></label><input id="f_anlage"></div>
@@ -302,12 +318,12 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
       <select id="f_cmax"><option value="1.05">c_max = 1,05 (±6 % Toleranz)</option><option value="1.10">c_max = 1,10 (+10 % Toleranz)</option></select>
     </div>
   </div>
-</section>
+</details>
 
 <div class="grid2">
 
-<section class="panel mode-experte">
-  <h2>2. Netzeinspeisung</h2>
+<details class="panel mode-experte" open id="sec-netzeinspeisung">
+  <summary><h2>2. Netzeinspeisung</h2></summary>
   <div class="modebar" id="modeBar">
     <button data-mode="A" class="active">A · Netzangabe (Ik&quot; am Übergabepunkt)</button>
     <button data-mode="B">B · Transformator</button>
@@ -346,10 +362,10 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
     </div>
     <p class="hinweis">Der gemessene Wert (z. B. Fluke 1664 FC) wird als Ausgangsimpedanz übernommen; die nachgelagerte Leitungsstrecke wird aufaddiert. R/X ist bei einer Schleifenmessung nicht getrennt bekannt und muss vom Anwender geschätzt/angepasst werden — <strong>gemessener</strong> Ausgangswert, kein Rechenwert.</p>
   </div>
-</section>
+</details>
 
-<section class="panel span2 mode-experte">
-  <h2>3. Anlagentopologie</h2>
+<details class="panel span2 mode-experte" open id="sec-topologie">
+  <summary><h2>3. Anlagentopologie</h2></summary>
   <p class="hinweis">Baumstruktur der Anlage: Netzeinspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise
   (beliebig verschachtelbar), z. B. Netz/Trafo → HAK → Hauptleitung → HV → Steigleitung → UV → Endstromkreis (Abschnitt 5.3).
   Auf einen Knoten im Diagramm tippen/klicken, um ihn auszuwählen — darunter erscheinen dann seine Leitungsdaten und die
@@ -365,10 +381,10 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   händischen Zeichnen eines Einpolschaltplans. Die Zeichenfläche lässt sich bei Bedarf scrollen.</p>
   <div id="topoDiagramWrap"><svg id="topoDiagram" class="topo-svg"></svg></div>
   <div id="nodeEditor"></div>
-</section>
+</details>
 
-<section class="panel span2">
-  <h2>4. Sicherungsbibliothek</h2>
+<details class="panel span2" open id="sec-sicherungsbibliothek">
+  <summary><h2>4. Sicherungsbibliothek</h2></summary>
   <p class="hinweis">Kennliniendaten sind herstellerspezifisch und urheberrechtlich geschützt — es sind
   <strong>keine</strong> Werksdaten vorbefüllt. Bitte eigene Datensätze anlegen oder als JSON importieren
   (Struktur siehe Lastenheft Abschnitt 4.4). Die Zuordnung einer Sicherung zu einer Leitung erfolgt in den
@@ -383,17 +399,17 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   <h3>Bibliothek (<span id="fuseCount">0</span> Datensätze)</h3>
   <input type="text" id="fuseFilter" placeholder="Bibliothek filtern (Hersteller, Typ, Klasse, Baugröße, In) …">
   <div id="fuseList"></div>
-</section>
+</details>
 
 </div>
 
-<section class="panel mode-experte">
-  <h2>5. Ergebnisse</h2>
+<details class="panel mode-experte" open id="sec-ergebnisse">
+  <summary><h2>5. Ergebnisse</h2></summary>
   <div id="ergebnisse"></div>
-</section>
+</details>
 
-<section class="panel mode-experte">
-  <h2>6. Zeit-Strom-Kennlinien-Diagramm</h2>
+<details class="panel mode-experte" open id="sec-diagramm">
+  <summary><h2>6. Zeit-Strom-Kennlinien-Diagramm</h2></summary>
   <div class="row">
     <div class="field"><label>Knoten für Diagramm</label><select id="chartNode"></select></div>
     <div class="field"><label>Vergleichsmodus (weitere Klassen aus Bibliothek gleichzeitig darstellen)</label>
@@ -402,17 +418,17 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
   </div>
   <canvas id="chart" width="1200" height="840"></canvas>
   <p class="hinweis">Gestrichelte Linienabschnitte = Extrapolation außerhalb hinterlegter Stützstellen. Vertikale Marker: Ik1min / Ik3max. Horizontale Marker: 0,4 s / 5 s.</p>
-</section>
+</details>
 
-<section class="panel no-print mode-experte">
-  <h2>7. Protokoll &amp; Datenaustausch</h2>
+<details class="panel no-print mode-experte" open id="sec-protokoll-export">
+  <summary><h2>7. Protokoll &amp; Datenaustausch</h2></summary>
   <div class="row">
     <div class="field"><button class="primary" id="btnPrint">Protokoll drucken / als PDF speichern</button></div>
     <div class="field"><button id="btnExportCase">Berechnungsfall exportieren (JSON)</button></div>
     <div class="field"><label>Berechnungsfall importieren</label><input type="file" id="caseImportFile" accept="application/json"></div>
     <div class="field"><button class="danger" id="btnResetAll">Alles zurücksetzen</button></div>
   </div>
-</section>
+</details>
 
 </div>
 
@@ -446,7 +462,7 @@ footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem;
    ============================================================================================ */
 "use strict";
 
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 const CHANGELOG = [
   { v: "1.0.0", datum: "2026-07-26", text: "Erste Fassung: Berechnungskern, Bewertungslogik, Kennliniendiagramm, Protokoll, Import/Export, Testsuite." },
   { v: "1.1.0", datum: "2026-07-26", text: "Anlagentopologie (Baumstruktur Einspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise) mit visuellem SVG-Diagramm ersetzt die frühere lineare Leitungsstrecke. Leitungsdaten und Sicherungszuordnung werden je Knoten in dessen Einstellungen bearbeitet (Klick/Tipp auf den Knoten im Diagramm). Automatische Migration älterer gespeicherter Berechnungsfälle." },
@@ -455,7 +471,8 @@ const CHANGELOG = [
   { v: "1.4.0", datum: "2026-07-26", text: "Anlagentopologie-Diagramm überarbeitet: deutlich kleinere Kacheln, frei per Ziehen (Maus/Finger) verschiebbar und beliebig anordenbar wie beim händischen Zeichnen eines Einpolschaltplans. Positionen werden je Knoten gespeichert (Export/Import, localStorage). Neuer Button „Automatisch anordnen“ setzt bei Bedarf auf die frühere Baum-Anordnung zurück." },
   { v: "1.4.1", datum: "2026-07-26", text: "Leitungsbeschriftungen (Länge/Querschnitt) im Topologie-Diagramm erhalten einen Hintergrund-Chip in Diagrammfarbe, damit die Verbindungslinie darunter nicht mehr mit dem Text überlappt -- auch bei frei verschobenen, diagonalen Verbindungen bleibt die Beschriftung klar lesbar." },
   { v: "1.4.2", datum: "2026-07-26", text: "Malreihenfolge im Topologie-Diagramm korrigiert: ALLE Verbindungslinien werden jetzt in einem Durchlauf vor ALLEN Beschriftungen gezeichnet. Zuvor konnte bei sich kreuzenden/überlappenden Linien (durch freies Verschieben der Kacheln) eine fremde Linie über einer bereits gezeichneten Beschriftung liegen und sie unlesbar machen." },
-  { v: "1.5.0", datum: "2026-07-27", text: "Prüfprotokoll (Druck/PDF-Export) grundlegend überarbeitet: erscheint jetzt als eigenständiges Dokument mit Briefkopf (Firmenlogo, Titel, Anlagendaten) statt als Ausdruck der gesamten Bearbeitungsoberfläche. Eingaben werden je Netzeinspeisungs-Modus sauber tabellarisch dargestellt statt als Rohdaten-Dump. Die Anlagentopologie wird als Diagramm eingebettet, die Bewertungsübersicht zeigt jetzt tatsächlich die berechneten Ergebnisse aller sechs Prüfungen je Knoten (zuvor nur ein Verweis auf den Bildschirmbereich), eine Tabelle der verwendeten Sicherungen mit Quelle/Datenstand sowie das Zeit-Strom-Kennliniendiagramm als Bild sind neu hinzugekommen." }
+  { v: "1.5.0", datum: "2026-07-27", text: "Prüfprotokoll (Druck/PDF-Export) grundlegend überarbeitet: erscheint jetzt als eigenständiges Dokument mit Briefkopf (Firmenlogo, Titel, Anlagendaten) statt als Ausdruck der gesamten Bearbeitungsoberfläche. Eingaben werden je Netzeinspeisungs-Modus sauber tabellarisch dargestellt statt als Rohdaten-Dump. Die Anlagentopologie wird als Diagramm eingebettet, die Bewertungsübersicht zeigt jetzt tatsächlich die berechneten Ergebnisse aller sechs Prüfungen je Knoten (zuvor nur ein Verweis auf den Bildschirmbereich), eine Tabelle der verwendeten Sicherungen mit Quelle/Datenstand sowie das Zeit-Strom-Kennliniendiagramm als Bild sind neu hinzugekommen." },
+  { v: "1.6.0", datum: "2026-07-27", text: "Alle Hauptabschnitte (1-7) sind jetzt einzeln auf- und zuklappbar (Klick/Tipp auf die Überschrift) -- praktisch auf kleinen Bildschirmen, um nur die gerade benötigten Bereiche einzublenden. Der Auf-/Zu-Zustand jedes Abschnitts wird gemerkt (localStorage). Diagramm und Anlagentopologie zeichnen sich beim Wiederaufklappen automatisch neu." }
 ];
 
 /* =========================================================================
@@ -2418,8 +2435,35 @@ document.getElementById("btnRunTests").addEventListener("click", ()=>{
 });
 
 /* ---- Initialisierung ---- */
+/* ---- Auf-/zuklappbare Abschnitte: Zustand je Abschnitt in localStorage merken ---- */
+function restoreAbschnittZustaende(){
+  let gespeichert = {};
+  try{ gespeichert = JSON.parse(localStorage.getItem("nhrechner_abschnitte_v1")) || {}; }catch(e){}
+  document.querySelectorAll("details.panel[id]").forEach(det=>{
+    if(gespeichert[det.id]===false) det.open = false;
+    else if(gespeichert[det.id]===true) det.open = true;
+  });
+}
+function initAufklappbareAbschnitte(){
+  document.querySelectorAll("details.panel[id]").forEach(det=>{
+    det.addEventListener("toggle", ()=>{
+      let gespeichert = {};
+      try{ gespeichert = JSON.parse(localStorage.getItem("nhrechner_abschnitte_v1")) || {}; }catch(e){}
+      gespeichert[det.id] = det.open;
+      try{ localStorage.setItem("nhrechner_abschnitte_v1", JSON.stringify(gespeichert)); }catch(e){}
+      // Canvas/SVG können sich während display:none nicht korrekt vermessen -- beim Öffnen neu zeichnen.
+      if(det.open){
+        if(det.id==="sec-diagramm") drawChart();
+        if(det.id==="sec-topologie") renderTopoDiagram();
+      }
+    });
+  });
+}
+
 function init(){
   loadState();
+  restoreAbschnittZustaende();
+  initAufklappbareAbschnitte();
   if(localStorage.getItem("nhrechner_legal_ack")==="1"){ document.getElementById("legalOverlay").style.display="none"; }
   if(!document.getElementById("f_datum").value) document.getElementById("f_datum").value = new Date().toISOString().slice(0,10);
   // Beispieltopologie nur beim allerersten Start (keine gespeicherten Knoten vorhanden)

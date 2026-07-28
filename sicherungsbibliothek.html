@@ -8,26 +8,23 @@
 </head>
 <body>
 
+<nav id="sideMenu" aria-label="Hauptmenü">
+  <button type="button" id="btnMenuToggle" class="menu-toggle" aria-label="Menü ein-/ausklappen">☰</button>
+  <div class="menu-links">
+    <a href="index.html" class="menu-link"><span class="menu-icon">🧮</span><span class="menu-label">Rechner</span></a>
+    <a href="sicherungsbibliothek.html" class="menu-link active"><span class="menu-icon">📚</span><span class="menu-label">Sicherungsbibliothek</span></a>
+  </div>
+</nav>
+<div id="menuBackdrop"></div>
+
 <header id="topbar">
   <h1>Sicherungsbibliothek</h1>
-  <nav class="topnav">
-    <a href="index.html">🧮 Rechner</a>
-    <a href="sicherungsbibliothek.html" class="active">📚 Sicherungsbibliothek</a>
-  </nav>
-  <div class="meta">Version <span id="verLabel"></span> · <button id="btnGlossarToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">❓ Glossar</button></div>
+  <div class="meta">Version <span id="verLabel"></span></div>
 </header>
 
 <div id="app">
 
 <div id="arbeitsbereich">
-
-<section class="panel" id="glossarPanel">
-  <h2>Glossar / Wiki der Datenpunkte</h2>
-  <p class="hinweis">Erklärt jedes Feld eines Sicherungsdatensatzes (JSON) inklusive Normbezug -- der JSON-Editor
-  kann keine einzelnen ⓘ-Infofelder je Zeile anzeigen, daher hier als durchsuchbare Gesamtübersicht.</p>
-  <input type="text" id="glossarSearch" placeholder="Suche im Glossar (z. B. „kennlinie“, „Baugröße“, „gTr“) …">
-  <div id="glossarList"></div>
-</section>
 
 <section class="panel">
   <h2>Sicherungsbibliothek</h2>
@@ -48,12 +45,23 @@
   <div id="fuseList"></div>
 </section>
 
+<section class="panel" id="glossarPanel">
+  <h2>Glossar / Wiki der Datenpunkte</h2>
+  <p class="hinweis">Erklärt jedes Feld eines Sicherungsdatensatzes (JSON) inklusive Normbezug -- der JSON-Editor
+  kann keine einzelnen ⓘ-Infofelder je Zeile anzeigen, daher hier als durchsuchbare Gesamtübersicht.</p>
+  <input type="text" id="glossarSearch" placeholder="Suche im Glossar (z. B. „kennlinie“, „Baugröße“, „gTr“) …">
+  <div id="glossarList"></div>
+</section>
+
 </div>
 
 </div>
 
 <footer id="appfooter">
-  NH-Kurzschlussstromrechner · Sicherungsbibliothek · Programmversion <span id="verLabel2"></span>
+  <div>NH-Kurzschlussstromrechner · Sicherungsbibliothek · Programmversion <span id="verLabel2"></span></div>
+  <div class="footer-links">
+    <button id="btnGlossarToggle">❓ Glossar</button>
+  </div>
 </footer>
 
 <script src="shared.js"></script>
@@ -121,11 +129,15 @@ document.getElementById("glossarSearch").addEventListener("input", (ev)=> render
 document.getElementById("btnGlossarToggle").addEventListener("click", ()=>{
   const panel = document.getElementById("glossarPanel");
   panel.classList.toggle("open");
-  if(panel.classList.contains("open")) renderGlossarList(document.getElementById("glossarSearch").value);
+  if(panel.classList.contains("open")){
+    renderGlossarList(document.getElementById("glossarSearch").value);
+    panel.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
 });
 
 function init(){
   loadState();
+  initMenu();
   document.getElementById("verLabel").textContent = APP_VERSION;
   document.getElementById("verLabel2").textContent = APP_VERSION;
   renderGlossarList("");

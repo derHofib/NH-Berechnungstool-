@@ -9,7 +9,7 @@
    jeweils anderen Seite gepflegte Daten (Anlagentopologie bzw. Sicherungsbibliothek) erhalten
    bleiben.
    ============================================================================================ */
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.8.0";
 const STORAGE_KEY = "nhrechner_state_v1";
 
 function el(tag, attrs, children){
@@ -388,4 +388,40 @@ function showFuseEditor(fuse){
   btnCancel.addEventListener("click", ()=>{ host.innerHTML=""; });
   card.append(btnSave, btnCancel);
   host.appendChild(card);
+}
+
+/* ---- Seitliches Hauptmenü (#sideMenu): drei Stufen -- collapsed (nur Menüzeichen), icons
+   (nur Icons), full (Icons + Beschriftung). Der Umschalter (#btnMenuToggle) schaltet zyklisch
+   durch, der Zustand wird in localStorage gemerkt und ist zwischen allen Seiten geteilt (dieselbe
+   Stufe bleibt beim Wechsel zwischen Rechner und Sicherungsbibliothek erhalten). ---- */
+const MENU_STATES = ["collapsed","icons","full"];
+const MENU_STATE_KEY = "nhrechner_menu_state";
+function getMenuState(){
+  try{
+    const s = localStorage.getItem(MENU_STATE_KEY);
+    return MENU_STATES.includes(s) ? s : "collapsed";
+  }catch(e){ return "collapsed"; }
+}
+function applyMenuState(state){
+  document.body.classList.remove("menu-collapsed","menu-icons","menu-full");
+  document.body.classList.add("menu-"+state);
+  const btn = document.getElementById("btnMenuToggle");
+  if(!btn) return;
+  const naechsteAktion = { collapsed:"Menü: Icons anzeigen", icons:"Menü: Beschriftung anzeigen", full:"Menü einklappen" };
+  btn.setAttribute("aria-label", naechsteAktion[state]);
+  btn.title = naechsteAktion[state];
+}
+function setMenuState(state){
+  try{ localStorage.setItem(MENU_STATE_KEY, state); }catch(e){}
+  applyMenuState(state);
+}
+function initMenu(){
+  applyMenuState(getMenuState());
+  const toggle = document.getElementById("btnMenuToggle");
+  if(toggle) toggle.addEventListener("click", ()=>{
+    const next = MENU_STATES[(MENU_STATES.indexOf(getMenuState())+1) % MENU_STATES.length];
+    setMenuState(next);
+  });
+  const backdrop = document.getElementById("menuBackdrop");
+  if(backdrop) backdrop.addEventListener("click", ()=> setMenuState("collapsed"));
 }

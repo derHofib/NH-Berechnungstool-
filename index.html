@@ -26,39 +26,27 @@
   </div>
 </div>
 
+<nav id="sideMenu" aria-label="Hauptmenü">
+  <button type="button" id="btnMenuToggle" class="menu-toggle" aria-label="Menü ein-/ausklappen">☰</button>
+  <div class="menu-links">
+    <a href="index.html" class="menu-link active"><span class="menu-icon">🧮</span><span class="menu-label">Rechner</span></a>
+    <a href="sicherungsbibliothek.html" class="menu-link"><span class="menu-icon">📚</span><span class="menu-label">Sicherungsbibliothek</span></a>
+  </div>
+</nav>
+<div id="menuBackdrop"></div>
+
 <header id="topbar">
   <h1>NH-Kurzschlussstromrechner</h1>
-  <nav class="topnav">
-    <a href="index.html" class="active">🧮 Rechner</a>
-    <a href="sicherungsbibliothek.html">📚 Sicherungsbibliothek</a>
-  </nav>
   <div class="modeswitch" id="modeSwitch">
     <button data-appmode="einfach" id="btnModeEinfach">👤 Einfach</button>
     <button data-appmode="experte" id="btnModeExperte">🔧 Experte</button>
   </div>
-  <div class="meta">Version <span id="verLabel"></span> · <button id="btnShowLegal" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Rechtliche Hinweise</button> <button id="btnGlossarToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">❓ Glossar</button> <button id="btnDebugToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">Debug/Tests</button></div>
+  <div class="meta">Version <span id="verLabel"></span></div>
 </header>
 
 <div id="app">
 
 <div id="arbeitsbereich">
-
-<section class="panel" id="glossarPanel">
-  <h2>Glossar / Wiki der Datenpunkte</h2>
-  <p class="hinweis">Erklärt jeden Eingabe- und Ergebniswert des Tools inklusive Normbezug. Dieselben Erklärungen
-  erscheinen auch als ⓘ-Infofeld direkt neben der jeweiligen Bezeichnung. Für die Felder eines
-  Sicherungsdatensatzes (JSON, Abschnitt 4.4) gibt es hier eigene Einträge, da sich im JSON-Editor keine
-  einzelnen Infofelder anzeigen lassen.</p>
-  <input type="text" id="glossarSearch" placeholder="Suche im Glossar (z. B. „Ik1min“, „Baugröße“, „gTr“) …">
-  <div id="glossarList"></div>
-</section>
-
-<section class="panel" id="debugPanel">
-  <h2>Debug &amp; Testsuite</h2>
-  <p class="hinweis">Interne Testsuite des reinen Berechnungskerns (Abschnitt 9 des Lastenhefts). Kein DOM-Zugriff in den geprüften Funktionen.</p>
-  <button id="btnRunTests" class="primary">Tests ausführen</button>
-  <div id="testResults"></div>
-</section>
 
 <section class="panel mode-einfach">
   <h2>Sicherungs-Schnellcheck</h2>
@@ -189,6 +177,23 @@
   </div>
 </details>
 
+<section class="panel" id="glossarPanel">
+  <h2>Glossar / Wiki der Datenpunkte</h2>
+  <p class="hinweis">Erklärt jeden Eingabe- und Ergebniswert des Tools inklusive Normbezug. Dieselben Erklärungen
+  erscheinen auch als ⓘ-Infofeld direkt neben der jeweiligen Bezeichnung. Für die Felder eines
+  Sicherungsdatensatzes (JSON, Abschnitt 4.4) gibt es hier eigene Einträge, da sich im JSON-Editor keine
+  einzelnen Infofelder anzeigen lassen.</p>
+  <input type="text" id="glossarSearch" placeholder="Suche im Glossar (z. B. „Ik1min“, „Baugröße“, „gTr“) …">
+  <div id="glossarList"></div>
+</section>
+
+<section class="panel" id="debugPanel">
+  <h2>Debug &amp; Testsuite</h2>
+  <p class="hinweis">Interne Testsuite des reinen Berechnungskerns (Abschnitt 9 des Lastenhefts). Kein DOM-Zugriff in den geprüften Funktionen.</p>
+  <button id="btnRunTests" class="primary">Tests ausführen</button>
+  <div id="testResults"></div>
+</section>
+
 </div>
 
 <section class="panel print-only" id="protokollDruck">
@@ -209,8 +214,13 @@
 </div>
 
 <footer id="appfooter">
-  NH-Kurzschlussstromrechner · Programmversion <span id="verLabel2"></span> ·
-  Änderungshistorie siehe „Debug/Tests“-Panel · Alle Formeln normativ referenziert (siehe Quellcode-Kommentare).
+  <div>NH-Kurzschlussstromrechner · Programmversion <span id="verLabel2"></span> ·
+  Änderungshistorie siehe „Debug/Tests“-Panel · Alle Formeln normativ referenziert (siehe Quellcode-Kommentare).</div>
+  <div class="footer-links">
+    <button id="btnShowLegal">⚖️ Rechtliche Hinweise</button>
+    <button id="btnGlossarToggle">❓ Glossar</button>
+    <button id="btnDebugToggle">🐞 Debug/Tests</button>
+  </div>
 </footer>
 
 <script src="shared.js"></script>
@@ -235,7 +245,8 @@ const CHANGELOG = [
   { v: "1.4.2", datum: "2026-07-26", text: "Malreihenfolge im Topologie-Diagramm korrigiert: ALLE Verbindungslinien werden jetzt in einem Durchlauf vor ALLEN Beschriftungen gezeichnet. Zuvor konnte bei sich kreuzenden/überlappenden Linien (durch freies Verschieben der Kacheln) eine fremde Linie über einer bereits gezeichneten Beschriftung liegen und sie unlesbar machen." },
   { v: "1.5.0", datum: "2026-07-27", text: "Prüfprotokoll (Druck/PDF-Export) grundlegend überarbeitet: erscheint jetzt als eigenständiges Dokument mit Briefkopf (Firmenlogo, Titel, Anlagendaten) statt als Ausdruck der gesamten Bearbeitungsoberfläche. Eingaben werden je Netzeinspeisungs-Modus sauber tabellarisch dargestellt statt als Rohdaten-Dump. Die Anlagentopologie wird als Diagramm eingebettet, die Bewertungsübersicht zeigt jetzt tatsächlich die berechneten Ergebnisse aller sechs Prüfungen je Knoten (zuvor nur ein Verweis auf den Bildschirmbereich), eine Tabelle der verwendeten Sicherungen mit Quelle/Datenstand sowie das Zeit-Strom-Kennliniendiagramm als Bild sind neu hinzugekommen." },
   { v: "1.6.0", datum: "2026-07-27", text: "Alle Hauptabschnitte (1-7) sind jetzt einzeln auf- und zuklappbar (Klick/Tipp auf die Überschrift) -- praktisch auf kleinen Bildschirmen, um nur die gerade benötigten Bereiche einzublenden. Der Auf-/Zu-Zustand jedes Abschnitts wird gemerkt (localStorage). Diagramm und Anlagentopologie zeichnen sich beim Wiederaufklappen automatisch neu." },
-  { v: "1.7.0", datum: "2026-07-28", text: "Sicherungsbibliothek in eine eigene Seite (sicherungsbibliothek.html) ausgelagert, über ein neues Menü in der Kopfzeile erreichbar. Rechner und Bibliothek teilen sich denselben gespeicherten Datenbestand (localStorage) -- angelegte/importierte Sicherungen stehen unmittelbar bei der Sicherungszuordnung in der Anlagentopologie und im Einfachen Modus zur Verfügung. Stylesheet (styles.css) und gemeinsam genutzte Logik (shared.js: Glossar, Info-Popover, Sicherungsdatensatz-Basisfunktionen) wurden dafür in eigene Dateien ausgelagert." }
+  { v: "1.7.0", datum: "2026-07-28", text: "Sicherungsbibliothek in eine eigene Seite (sicherungsbibliothek.html) ausgelagert, über ein neues Menü in der Kopfzeile erreichbar. Rechner und Bibliothek teilen sich denselben gespeicherten Datenbestand (localStorage) -- angelegte/importierte Sicherungen stehen unmittelbar bei der Sicherungszuordnung in der Anlagentopologie und im Einfachen Modus zur Verfügung. Stylesheet (styles.css) und gemeinsam genutzte Logik (shared.js: Glossar, Info-Popover, Sicherungsdatensatz-Basisfunktionen) wurden dafür in eigene Dateien ausgelagert." },
+  { v: "1.8.0", datum: "2026-07-28", text: "Kopfzeilen-Menü durch ein seitliches, dreistufig zusammenklappbares Hauptmenü ersetzt (nur Menüzeichen / nur Icons / Icons mit Beschriftung, per Klick auf den Umschalter durchschaltbar, Zustand gemerkt und seitenübergreifend geteilt). Rechtliche Hinweise, Glossar und Debug/Testsuite sind jetzt über Buttons am Seitenende (Fußzeile) erreichbar, die zugehörigen Panels (Glossar, Debug) erscheinen dort ebenfalls statt am Seitenanfang." }
 ];
 
 /* =========================================================================
@@ -868,7 +879,10 @@ document.getElementById("glossarSearch").addEventListener("input", (ev)=> render
 document.getElementById("btnGlossarToggle").addEventListener("click", ()=>{
   const panel = document.getElementById("glossarPanel");
   panel.classList.toggle("open");
-  if(panel.classList.contains("open")) renderGlossarList(document.getElementById("glossarSearch").value);
+  if(panel.classList.contains("open")){
+    renderGlossarList(document.getElementById("glossarSearch").value);
+    panel.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
 });
 renderGlossarList("");
 
@@ -881,7 +895,9 @@ document.getElementById("btnShowLegal").addEventListener("click", ()=>{
   document.getElementById("legalOverlay").style.display = "flex";
 });
 document.getElementById("btnDebugToggle").addEventListener("click", ()=>{
-  document.getElementById("debugPanel").classList.toggle("open");
+  const panel = document.getElementById("debugPanel");
+  panel.classList.toggle("open");
+  if(panel.classList.contains("open")) panel.scrollIntoView({ behavior:"smooth", block:"start" });
 });
 
 /* ---- Versionsanzeige ---- */
@@ -1833,6 +1849,7 @@ function initAufklappbareAbschnitte(){
 
 function init(){
   loadState();
+  initMenu();
   restoreAbschnittZustaende();
   initAufklappbareAbschnitte();
   if(localStorage.getItem("nhrechner_legal_ack")==="1"){ document.getElementById("legalOverlay").style.display="none"; }

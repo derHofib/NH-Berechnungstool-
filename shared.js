@@ -9,7 +9,7 @@
    jeweils anderen Seite gepflegte Daten (Anlagentopologie bzw. Sicherungsbibliothek) erhalten
    bleiben.
    ============================================================================================ */
-const APP_VERSION = "1.9.2";
+const APP_VERSION = "1.10.0";
 const STORAGE_KEY = "nhrechner_state_v1";
 
 function el(tag, attrs, children){
@@ -322,6 +322,15 @@ function afterFuseLibraryChange(){
   if(typeof recompute==="function") recompute();
   else if(typeof saveState==="function") saveState();
 }
+function deleteFuseById(id){
+  const idx = STATE.fuseLibrary.findIndex(f=>f.id===id);
+  if(idx<0) return;
+  const removed = STATE.fuseLibrary.splice(idx,1)[0];
+  if(removed && STATE.topologie && STATE.topologie.root) clearFuseReferences(STATE.topologie.root, removed.id);
+  const host = document.getElementById("fuseEditorHost");
+  if(host) host.innerHTML = "";
+  afterFuseLibraryChange();
+}
 function renderFuseList(){
   const countEl = document.getElementById("fuseCount");
   const host = document.getElementById("fuseList");
@@ -332,18 +341,19 @@ function renderFuseList(){
   const filter = filterEl ? filterEl.value.trim().toLowerCase() : "";
   const gefiltert = filter ? STATE.fuseLibrary.filter(f=>fuseSuchtext(f).includes(filter)) : STATE.fuseLibrary;
   gefiltert.slice(0, FUSE_LIST_MAX_ANZEIGE).forEach((f)=>{
-    const idx = STATE.fuseLibrary.indexOf(f);
     const card = el("div", { class:"card" });
     const head = el("div", { class:"card-head" }, [
       el("strong", { text: `${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse} ${f.In_A?f.In_A+"A":""}${f.Ich_A?" M "+f.Ich_A+"A":""}${f.Sr_kVA?f.Sr_kVA+"kVA":""} / ${f.Un_V}V` })
     ]);
-    const del = el("button", { text:"✕", class:"danger" });
+    const btnRow = el("div", { class:"row", style:"gap:.4em; flex-wrap:nowrap;" });
+    const edit = el("button", { text:"✎ Bearbeiten" });
+    edit.addEventListener("click", ()=> showFuseEditor(f, true));
+    const del = el("button", { text:"✕ Löschen", class:"danger" });
     del.addEventListener("click", ()=>{
-      const removed = STATE.fuseLibrary.splice(idx,1)[0];
-      if(removed && STATE.topologie && STATE.topologie.root) clearFuseReferences(STATE.topologie.root, removed.id);
-      afterFuseLibraryChange();
+      if(confirm(`„${f.hersteller||"(Hersteller?)"} ${f.typbezeichnung||""} — ${f.klasse} ${f.baugroesse}“ wirklich löschen?`)) deleteFuseById(f.id);
     });
-    head.appendChild(del);
+    btnRow.append(edit, del);
+    head.appendChild(btnRow);
     card.appendChild(head);
     card.appendChild(el("div", { class:"small", text: `Icn=${f.Icn_kA??"—"}kA · Quelle: ${f.quelle||"—"} (Stand ${f.stand||"—"})` }));
     host.appendChild(card);
@@ -355,13 +365,18 @@ function renderFuseList(){
   }
   if(typeof refreshEinfachModus==="function") refreshEinfachModus();
 }
-function showFuseEditor(fuse){
+/* isEdit=true: fuse ist der bestehende Datensatz aus STATE.fuseLibrary -- Speichern ersetzt ihn an
+   derselben Stelle (gleiche id bleibt erhalten, damit Sicherungszuordnungen in der Anlagentopologie
+   gültig bleiben). Die id wird im Editor bewusst nicht angezeigt (kein sinnvolles, vom Anwender zu
+   pflegendes Feld) und beim Speichern immer auf den ursprünglichen Wert zurückgesetzt. */
+function showFuseEditor(fuse, isEdit){
   const host = document.getElementById("fuseEditorHost");
   if(!host) return;
   host.innerHTML = "";
+  const originalId = isEdit ? fuse.id : null;
   const card = el("div", { class:"card" });
   const headRow = el("div", { class:"card-head" });
-  headRow.appendChild(el("h3", { text:"Sicherungsdatensatz anlegen/bearbeiten" }));
+  headRow.appendChild(el("h3", { text: isEdit ? "Sicherungsdatensatz bearbeiten" : "Neuen Sicherungsdatensatz anlegen" }));
   const btnGlossar = el("button", { text:"❓ Felder erklären (Glossar)" });
   btnGlossar.addEventListener("click", ()=>{
     document.getElementById("glossarPanel").classList.add("open");
@@ -372,22 +387,39 @@ function showFuseEditor(fuse){
   headRow.appendChild(btnGlossar);
   card.appendChild(headRow);
   const jsonArea = el("textarea", { class:"jsonbox" });
-  jsonArea.value = JSON.stringify(fuse, null, 2);
+  const { id, ...anzeigeFelder } = fuse;
+  jsonArea.value = JSON.stringify(isEdit ? anzeigeFelder : fuse, null, 2);
   card.appendChild(el("p", { class:"hinweis", text:"Struktur gemäß Lastenheft Abschnitt 4.4. Kennlinienwerte (I_A: null) sind vom Anwender aus den Herstellerunterlagen einzutragen -- keine Schätzwerte einsetzen. Jedes Feld ist im Glossar (Button oben bzw. Kopfzeile) unter seinem JSON-Namen erklärt." }));
   card.appendChild(jsonArea);
-  const btnSave = el("button", { text:"Datensatz speichern", class:"primary" });
+  const btnRow = el("div", { class:"row" });
+  const btnSave = el("button", { text: isEdit ? "Änderungen speichern" : "Datensatz speichern", class:"primary" });
   btnSave.addEventListener("click", ()=>{
     try{
-      const parsed = ensureFuseId(JSON.parse(jsonArea.value));
-      STATE.fuseLibrary.push(parsed);
+      const parsed = JSON.parse(jsonArea.value);
+      if(isEdit){
+        parsed.id = originalId;
+        const idx = STATE.fuseLibrary.findIndex(f=>f.id===originalId);
+        if(idx>=0) STATE.fuseLibrary[idx] = parsed; else STATE.fuseLibrary.push(ensureFuseId(parsed));
+      } else {
+        STATE.fuseLibrary.push(ensureFuseId(parsed));
+      }
       afterFuseLibraryChange();
       host.innerHTML = "";
     }catch(e){ alert("Ungültiges JSON: "+e.message); }
   });
   const btnCancel = el("button", { text:"Abbrechen" });
   btnCancel.addEventListener("click", ()=>{ host.innerHTML=""; });
-  card.append(btnSave, btnCancel);
+  btnRow.append(btnSave, btnCancel);
+  if(isEdit){
+    const btnDelete = el("button", { text:"🗑 Datensatz löschen", class:"danger" });
+    btnDelete.addEventListener("click", ()=>{
+      if(confirm(`„${fuse.hersteller||"(Hersteller?)"} ${fuse.typbezeichnung||""} — ${fuse.klasse} ${fuse.baugroesse}“ wirklich löschen?`)) deleteFuseById(originalId);
+    });
+    btnRow.append(btnDelete);
+  }
+  card.appendChild(btnRow);
   host.appendChild(card);
+  host.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
 /* ---- Seitliches Hauptmenü (#sideMenu): drei Stufen -- collapsed (nur Menüzeichen), icons

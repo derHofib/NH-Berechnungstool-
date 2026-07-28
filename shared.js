@@ -9,7 +9,7 @@
    jeweils anderen Seite gepflegte Daten (Anlagentopologie bzw. Sicherungsbibliothek) erhalten
    bleiben.
    ============================================================================================ */
-const APP_VERSION = "1.10.0";
+const APP_VERSION = "1.11.0";
 const STORAGE_KEY = "nhrechner_state_v1";
 
 function el(tag, attrs, children){
@@ -129,6 +129,24 @@ const GLOSSAR = {
 // Sicherungsdatensätzen (siehe Sicherungsbibliothek). Die Auswahllisten unten filtern daher
 // direkt über die tatsächlich vorhandenen Bibliotheksdaten (dynamische Einschränkung).
 const BAUGROESSEN = ["NH000","NH00","NH0","NH1","NH2","NH3","NH4","NH4a","NH1XL","NH2XL","NH3XL"];
+
+// Betriebsklassen-Verhaltensmatrix (Abschnitt 4.2 Lastenheft). "bemessung" steuert, welches
+// Bemessungsstrom-Feld im Sicherungseditor angezeigt wird ("A"=In_A, "A_M"=In_A+Ich_A bei gM,
+// "kVA"=Sr_kVA bei gTr); "dc" erzwingt stromart="DC" (gPV).
+const BETRIEBSKLASSEN = {
+  gG:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gG - Allgemeine Anwendung / Leitungsschutz" },
+  gM:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A_M", label:"gM - Schaltgeräte-/Motorstromkreise (Doppelangabe In M Ich)" },
+  aM:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aM - Motorstromkreise, nur Kurzschlussschutz" },
+  gR:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gR - Halbleiterschutz (Ganzbereich)" },
+  aR:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aR - Halbleiter-Kurzschlussschutz (Backup)" },
+  gS:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gS - Kombinierter Halbleiter-/Leitungsschutz" },
+  gTr: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"kVA", label:"gTr - Transformatorschutz (Bemessung in kVA)" },
+  gB:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gB - Bergbauanlagen" },
+  gPV: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gPV - Photovoltaik (DC)", dc:true },
+  gN:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gN - Nordamerikanische Bemessungswerte" },
+  aN:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aN - Nordamerikanische Bemessungswerte (Teilbereich)" },
+  gD:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gD - Nordamerikanisch, time delay" }
+};
 
 // Vorlage für einen Sicherungsdatensatz (Abschnitt 4.4 Lastenheft) -- alle Kennwerte sind vom
 // Anwender aus Herstellerunterlagen zu befüllen. Es sind KEINE Herstellerdaten vorbelegt.
@@ -327,8 +345,7 @@ function deleteFuseById(id){
   if(idx<0) return;
   const removed = STATE.fuseLibrary.splice(idx,1)[0];
   if(removed && STATE.topologie && STATE.topologie.root) clearFuseReferences(STATE.topologie.root, removed.id);
-  const host = document.getElementById("fuseEditorHost");
-  if(host) host.innerHTML = "";
+  if(typeof closeFuseEditor==="function") closeFuseEditor();
   afterFuseLibraryChange();
 }
 function renderFuseList(){
@@ -365,51 +382,180 @@ function renderFuseList(){
   }
   if(typeof refreshEinfachModus==="function") refreshEinfachModus();
 }
-/* isEdit=true: fuse ist der bestehende Datensatz aus STATE.fuseLibrary -- Speichern ersetzt ihn an
+/* ---- Sicherungsdatensatz-Editor: modales Fenster mit einzelnen Datenfeldern statt Roh-JSON ----
+   isEdit=true: fuse ist der bestehende Datensatz aus STATE.fuseLibrary -- Speichern ersetzt ihn an
    derselben Stelle (gleiche id bleibt erhalten, damit Sicherungszuordnungen in der Anlagentopologie
-   gültig bleiben). Die id wird im Editor bewusst nicht angezeigt (kein sinnvolles, vom Anwender zu
-   pflegendes Feld) und beim Speichern immer auf den ursprünglichen Wert zurückgesetzt. */
+   gültig bleiben). Es wird an einer Kopie (draft) gearbeitet, STATE.fuseLibrary wird erst beim
+   Klick auf "Speichern" verändert -- "Abbrechen"/Klick auf den abgedunkelten Hintergrund/Esc
+   verwerfen alle Änderungen. */
+function fuseFieldWrap(labelTxt, inputEl, infoKey){
+  const wrap = el("div", { class:"field" });
+  const label = el("label", { text:labelTxt });
+  if(infoKey) label.appendChild(infoIcon(infoKey));
+  wrap.appendChild(label);
+  wrap.appendChild(inputEl);
+  return wrap;
+}
+function fuseNumberInput(value, onChange){
+  const input = el("input", { type:"number", step:"any", value:(value==null||value==="") ? "" : value });
+  input.addEventListener("input", ()=>{
+    const v = input.value.trim();
+    onChange(v==="" ? null : parseFloat(v));
+  });
+  return input;
+}
+function fuseTextInput(value, onChange){
+  const input = el("input", { type:"text", value: value==null ? "" : value });
+  input.addEventListener("input", ()=> onChange(input.value));
+  return input;
+}
+function fuseSelectInput(value, options, onChange){
+  const sel = el("select");
+  options.forEach(o=>{
+    const val = typeof o==="object" ? o.value : o;
+    const lbl = typeof o==="object" ? o.label : o;
+    const op = el("option", { value:val, text:lbl });
+    if(val===value) op.setAttribute("selected","selected");
+    sel.appendChild(op);
+  });
+  sel.addEventListener("change", ()=> onChange(sel.value));
+  return sel;
+}
+// Dynamische Stützstellen-Tabelle (Zeit-Strom-Kennlinie / Durchlassstrom) mit Zeilen hinzufügen/entfernen.
+function buildArrayTableEditor(titleTxt, infoKey, arr, columns, addLabel, addDefaults){
+  const wrap = el("div", { class:"field", style:"flex-basis:100%;" });
+  const label = el("label", { text:titleTxt });
+  if(infoKey) label.appendChild(infoIcon(infoKey));
+  wrap.appendChild(label);
+  const rowsHost = el("div", {});
+  function renderRows(){
+    rowsHost.innerHTML = "";
+    if(!arr.length) rowsHost.appendChild(el("p", { class:"hinweis", text:"Keine Stützstellen -- unten hinzufügen." }));
+    arr.forEach((row, i)=>{
+      const rowEl = el("div", { class:"row" });
+      columns.forEach(col=>{
+        rowEl.appendChild(fuseFieldWrap(col.label, fuseNumberInput(row[col.key], v=>{ row[col.key]=v; })));
+      });
+      const btnDel = el("button", { text:"✕", class:"danger", "aria-label":"Stützstelle entfernen" });
+      btnDel.addEventListener("click", ()=>{ arr.splice(i,1); renderRows(); });
+      rowEl.appendChild(fuseFieldWrap(" ", btnDel));
+      rowsHost.appendChild(rowEl);
+    });
+  }
+  renderRows();
+  wrap.appendChild(rowsHost);
+  const btnAdd = el("button", { text:addLabel });
+  btnAdd.addEventListener("click", ()=>{ arr.push(Object.assign({}, addDefaults)); renderRows(); });
+  wrap.appendChild(btnAdd);
+  return wrap;
+}
+function closeFuseEditor(){
+  const overlay = document.getElementById("fuseEditorOverlay");
+  if(overlay) overlay.remove();
+  document.removeEventListener("keydown", fuseEditorEscHandler);
+}
+function fuseEditorEscHandler(ev){ if(ev.key==="Escape") closeFuseEditor(); }
+
 function showFuseEditor(fuse, isEdit){
-  const host = document.getElementById("fuseEditorHost");
-  if(!host) return;
-  host.innerHTML = "";
+  closeFuseEditor();
   const originalId = isEdit ? fuse.id : null;
-  const card = el("div", { class:"card" });
+  const draft = JSON.parse(JSON.stringify(fuse));
+  if(!Array.isArray(draft.kennlinie)) draft.kennlinie = [];
+  if(!Array.isArray(draft.durchlassstrom)) draft.durchlassstrom = [];
+
+  const overlay = el("div", { id:"fuseEditorOverlay", class:"modal-overlay open" });
+  overlay.addEventListener("click", (ev)=>{ if(ev.target===overlay) closeFuseEditor(); });
+  const box = el("div", { class:"modal-box" });
+  overlay.appendChild(box);
+
   const headRow = el("div", { class:"card-head" });
   headRow.appendChild(el("h3", { text: isEdit ? "Sicherungsdatensatz bearbeiten" : "Neuen Sicherungsdatensatz anlegen" }));
-  const btnGlossar = el("button", { text:"❓ Felder erklären (Glossar)" });
-  btnGlossar.addEventListener("click", ()=>{
-    document.getElementById("glossarPanel").classList.add("open");
-    document.getElementById("glossarSearch").value = "";
-    renderGlossarList("");
-    document.getElementById("glossarPanel").scrollIntoView({ behavior:"smooth", block:"start" });
-  });
-  headRow.appendChild(btnGlossar);
-  card.appendChild(headRow);
-  const jsonArea = el("textarea", { class:"jsonbox" });
-  const { id, ...anzeigeFelder } = fuse;
-  jsonArea.value = JSON.stringify(isEdit ? anzeigeFelder : fuse, null, 2);
-  card.appendChild(el("p", { class:"hinweis", text:"Struktur gemäß Lastenheft Abschnitt 4.4. Kennlinienwerte (I_A: null) sind vom Anwender aus den Herstellerunterlagen einzutragen -- keine Schätzwerte einsetzen. Jedes Feld ist im Glossar (Button oben bzw. Kopfzeile) unter seinem JSON-Namen erklärt." }));
-  card.appendChild(jsonArea);
-  const btnRow = el("div", { class:"row" });
-  const btnSave = el("button", { text: isEdit ? "Änderungen speichern" : "Datensatz speichern", class:"primary" });
-  btnSave.addEventListener("click", ()=>{
-    try{
-      const parsed = JSON.parse(jsonArea.value);
-      if(isEdit){
-        parsed.id = originalId;
-        const idx = STATE.fuseLibrary.findIndex(f=>f.id===originalId);
-        if(idx>=0) STATE.fuseLibrary[idx] = parsed; else STATE.fuseLibrary.push(ensureFuseId(parsed));
-      } else {
-        STATE.fuseLibrary.push(ensureFuseId(parsed));
+  const btnClose = el("button", { text:"✕", "aria-label":"Schließen, Änderungen verwerfen" });
+  btnClose.addEventListener("click", closeFuseEditor);
+  headRow.appendChild(btnClose);
+  box.appendChild(headRow);
+  box.appendChild(el("p", { class:"hinweis", text:"Struktur gemäß Lastenheft Abschnitt 4.4. Kennlinienwerte sind vom Anwender aus den Herstellerunterlagen einzutragen -- keine Schätzwerte einsetzen. Jedes Feld ist über sein ⓘ-Symbol erklärt." }));
+
+  const form = el("div", {});
+  box.appendChild(form);
+
+  const rowAllg1 = el("div", { class:"row" });
+  rowAllg1.append(
+    fuseFieldWrap("Hersteller", fuseTextInput(draft.hersteller, v=>draft.hersteller=v), "f_hersteller"),
+    fuseFieldWrap("Typbezeichnung", fuseTextInput(draft.typbezeichnung, v=>draft.typbezeichnung=v), "f_typ")
+  );
+  form.appendChild(rowAllg1);
+
+  const bemessungHost = el("div", { class:"row" });
+  function renderBemessungFelder(){
+    bemessungHost.innerHTML = "";
+    const info = BETRIEBSKLASSEN[draft.klasse] || {};
+    if(info.bemessung === "kVA"){
+      bemessungHost.appendChild(fuseFieldWrap("Sr [kVA]", fuseNumberInput(draft.Sr_kVA, v=>draft.Sr_kVA=v), "f_srkva"));
+    } else {
+      bemessungHost.appendChild(fuseFieldWrap("In [A]", fuseNumberInput(draft.In_A, v=>draft.In_A=v), "f_in"));
+      if(info.bemessung === "A_M"){
+        bemessungHost.appendChild(fuseFieldWrap("Ich [A] (nur gM)", fuseNumberInput(draft.Ich_A, v=>draft.Ich_A=v), "f_ich"));
       }
-      afterFuseLibraryChange();
-      host.innerHTML = "";
-    }catch(e){ alert("Ungültiges JSON: "+e.message); }
+    }
+    bemessungHost.appendChild(fuseFieldWrap("Un [V]", fuseNumberInput(draft.Un_V, v=>draft.Un_V=v), "f_un"));
+  }
+
+  const rowAllg2 = el("div", { class:"row" });
+  const selStromart = fuseSelectInput(draft.stromart||"AC", [{value:"AC",label:"AC"},{value:"DC",label:"DC"}], v=>draft.stromart=v);
+  const selKlasse = fuseSelectInput(draft.klasse, Object.keys(BETRIEBSKLASSEN).map(k=>({ value:k, label:BETRIEBSKLASSEN[k].label })), v=>{
+    draft.klasse = v;
+    const info = BETRIEBSKLASSEN[v] || {};
+    if(info.dc){ draft.stromart = "DC"; selStromart.value = "DC"; }
+    renderBemessungFelder();
   });
-  const btnCancel = el("button", { text:"Abbrechen" });
-  btnCancel.addEventListener("click", ()=>{ host.innerHTML=""; });
-  btnRow.append(btnSave, btnCancel);
+  rowAllg2.append(
+    fuseFieldWrap("Baugröße", fuseSelectInput(draft.baugroesse, BAUGROESSEN, v=>draft.baugroesse=v), "f_baugroesse"),
+    fuseFieldWrap("Klasse", selKlasse, "f_klasse"),
+    fuseFieldWrap("Stromart", selStromart, "f_stromart")
+  );
+  form.appendChild(rowAllg2);
+  renderBemessungFelder();
+  form.appendChild(bemessungHost);
+
+  const rowAusschalt = el("div", { class:"row" });
+  rowAusschalt.appendChild(fuseFieldWrap("Icn [kA]", fuseNumberInput(draft.Icn_kA, v=>draft.Icn_kA=v), "f_icn"));
+  form.appendChild(rowAusschalt);
+
+  const rowKennlinie = el("div", { class:"row" });
+  rowKennlinie.appendChild(buildArrayTableEditor("Zeit-Strom-Kennlinie", "f_kennlinie", draft.kennlinie,
+    [{key:"t_s", label:"t [s]"},{key:"I_A", label:"I [A]"}], "+ Stützstelle hinzufügen", {t_s:null, I_A:null}));
+  form.appendChild(rowKennlinie);
+
+  const rowI2t = el("div", { class:"row" });
+  rowI2t.append(
+    fuseFieldWrap("Schmelz-I²t [A²s]", fuseNumberInput(draft.schmelz_I2t_A2s, v=>draft.schmelz_I2t_A2s=v), "f_schmelzi2t"),
+    fuseFieldWrap("Gesamt-I²t [A²s]", fuseNumberInput(draft.gesamt_I2t_A2s, v=>draft.gesamt_I2t_A2s=v), "f_gesamti2t")
+  );
+  form.appendChild(rowI2t);
+
+  const rowDurchlass = el("div", { class:"row" });
+  rowDurchlass.appendChild(buildArrayTableEditor("Durchlassstrom-Kennlinie (Begrenzung)", "f_durchlass", draft.durchlassstrom,
+    [{key:"Ik_prosp_kA", label:"Ik prosp. [kA]"},{key:"Id_kA", label:"Id [kA]"}], "+ Stützstelle hinzufügen", {Ik_prosp_kA:null, Id_kA:null}));
+  form.appendChild(rowDurchlass);
+
+  const rowWeitere1 = el("div", { class:"row" });
+  rowWeitere1.append(
+    fuseFieldWrap("Verlustleistung [W]", fuseNumberInput(draft.verlustleistung_W, v=>draft.verlustleistung_W=v), "f_verlust"),
+    fuseFieldWrap("Inf [A] (nur gG)", fuseNumberInput(draft.Inf_A, v=>draft.Inf_A=v), "f_inf"),
+    fuseFieldWrap("If [A] (nur gG)", fuseNumberInput(draft.If_A, v=>draft.If_A=v), "f_if"),
+    fuseFieldWrap("Konv. Zeit tk [s]", fuseNumberInput(draft.tk_konv_s, v=>draft.tk_konv_s=v), "f_tkkonv")
+  );
+  form.appendChild(rowWeitere1);
+
+  const rowQuelle = el("div", { class:"row" });
+  rowQuelle.append(
+    fuseFieldWrap("Quelle (Datenblatt)", fuseTextInput(draft.quelle, v=>draft.quelle=v), "f_quelle"),
+    fuseFieldWrap("Datenstand", fuseTextInput(draft.stand, v=>draft.stand=v), "f_stand")
+  );
+  form.appendChild(rowQuelle);
+
+  const btnRow = el("div", { class:"row" });
   if(isEdit){
     const btnDelete = el("button", { text:"🗑 Datensatz löschen", class:"danger" });
     btnDelete.addEventListener("click", ()=>{
@@ -417,9 +563,25 @@ function showFuseEditor(fuse, isEdit){
     });
     btnRow.append(btnDelete);
   }
-  card.appendChild(btnRow);
-  host.appendChild(card);
-  host.scrollIntoView({ behavior:"smooth", block:"start" });
+  const btnCancel = el("button", { text:"Abbrechen" });
+  btnCancel.addEventListener("click", closeFuseEditor);
+  const btnSave = el("button", { text: isEdit ? "Änderungen speichern" : "Datensatz speichern", class:"primary" });
+  btnSave.addEventListener("click", ()=>{
+    if(isEdit){
+      draft.id = originalId;
+      const idx = STATE.fuseLibrary.findIndex(f=>f.id===originalId);
+      if(idx>=0) STATE.fuseLibrary[idx] = draft; else STATE.fuseLibrary.push(ensureFuseId(draft));
+    } else {
+      STATE.fuseLibrary.push(ensureFuseId(draft));
+    }
+    closeFuseEditor();
+    afterFuseLibraryChange();
+  });
+  btnRow.append(btnCancel, btnSave);
+  box.appendChild(btnRow);
+
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", fuseEditorEscHandler);
 }
 
 /* ---- Seitliches Hauptmenü (#sideMenu): drei Stufen -- collapsed (nur Menüzeichen), icons

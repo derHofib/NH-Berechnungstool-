@@ -254,7 +254,8 @@ const CHANGELOG = [
   { v: "1.9.0", datum: "2026-07-28", text: "Optischer Refresh: deutlich hellerer Hintergrund, weichere/größere Rundungen (Panels, Buttons, Eingabefelder), dezente Schatten statt harter Kanten sowie flüssige Übergänge bei Hover/Fokus. Kräftiges Blau als Akzentfarbe durch zurückhaltende Graustufen ersetzt (Kopf-/Menüleiste, Buttons, Diagrammfarben); Ampel-Bewertungsfarben (bestanden/nicht bestanden/Warnung) bleiben aus Sicherheitsgründen erhalten." },
   { v: "1.9.1", datum: "2026-07-28", text: "Die bunten Emoji-Symbole im Hauptmenü (Rechner/Sicherungsbibliothek) durch einfache, einfarbige Linien-Icons (Taschenrechner, Buch) ersetzt -- eindeutig erkennbar auch in der reinen Icon-Stufe des Menüs ohne Textbeschriftung." },
   { v: "1.9.2", datum: "2026-07-28", text: "Abschnitt „3. Anlagentopologie“ (Diagramm, Leitungsdaten, Sicherungszuordnung je Knoten) ist jetzt auch im Einfachen Modus sichtbar und nutzbar, nicht mehr nur im Experten-Modus. Ergebnisse, Kennlinien-Diagramm und Protokoll (vollständige Bewertung nach allen sechs Prüfungen) bleiben weiterhin dem Experten-Modus vorbehalten." },
-  { v: "1.10.0", datum: "2026-07-28", text: "Sicherungsbibliothek: bestehende Datensätze lassen sich jetzt über einen „✎ Bearbeiten“-Button je Karte richtig bearbeiten (Änderungen ersetzen den Datensatz an Ort und Stelle statt einen Duplikat-Eintrag anzulegen) statt nur neu angelegt oder gelöscht werden zu können. Die interne Datensatz-ID wird im Editor nicht mehr angezeigt, um versehentliche Änderungen daran zu vermeiden. Löschen ist jetzt sowohl direkt in der Liste als auch aus dem Editor heraus möglich, jeweils mit Sicherheitsabfrage." }
+  { v: "1.10.0", datum: "2026-07-28", text: "Sicherungsbibliothek: bestehende Datensätze lassen sich jetzt über einen „✎ Bearbeiten“-Button je Karte richtig bearbeiten (Änderungen ersetzen den Datensatz an Ort und Stelle statt einen Duplikat-Eintrag anzulegen) statt nur neu angelegt oder gelöscht werden zu können. Die interne Datensatz-ID wird im Editor nicht mehr angezeigt, um versehentliche Änderungen daran zu vermeiden. Löschen ist jetzt sowohl direkt in der Liste als auch aus dem Editor heraus möglich, jeweils mit Sicherheitsabfrage." },
+  { v: "1.11.0", datum: "2026-07-28", text: "Sicherungsdatensatz-Editor grundlegend überarbeitet: statt eines Roh-JSON-Textfelds gibt es jetzt einzelne, beschriftete Datenfelder je Kennwert (inkl. Auswahllisten für Baugröße/Klasse/Stromart und dynamischer Stützstellen-Tabellen für Zeit-Strom-Kennlinie und Durchlassstrom-Kennlinie mit Zeilen hinzufügen/entfernen). Die Bemessungsstrom-Felder passen sich automatisch an die gewählte Klasse an (In, In+Ich bei gM, oder Sr bei gTr). Der Editor öffnet sich außerdem als eigenes Fenster (Modal) über der aktuellen Seite statt inline in der Bibliotheksliste -- schließbar per „Abbrechen“, Klick auf den abgedunkelten Hintergrund oder Esc." }
 ];
 
 /* =========================================================================
@@ -281,22 +282,6 @@ const NORM = {
     "TT":     { endstromkreis_s: 0.2, verteilung_s: 1,   quelle: "DIN VDE 0100-410 Tab. 41.1 (TT-System) -- vom Anwender zu bestätigen, i.d.R. RCD-Schutz maßgeblich" },
     "IT":     { endstromkreis_s: null, verteilung_s: null, quelle: "DIN VDE 0100-410 (IT-System, Doppelfehlerbedingung) -- vom Anwender fallbezogen einzupflegen" }
   }
-};
-
-// Betriebsklassen-Verhaltensmatrix (Abschnitt 4.2 Lastenheft)
-const BETRIEBSKLASSEN = {
-  gG:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gG - Allgemeine Anwendung / Leitungsschutz" },
-  gM:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A_M", label:"gM - Schaltgeräte-/Motorstromkreise (Doppelangabe In M Ich)" },
-  aM:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aM - Motorstromkreise, nur Kurzschlussschutz" },
-  gR:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gR - Halbleiterschutz (Ganzbereich)" },
-  aR:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aR - Halbleiter-Kurzschlussschutz (Backup)" },
-  gS:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gS - Kombinierter Halbleiter-/Leitungsschutz" },
-  gTr: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"kVA", label:"gTr - Transformatorschutz (Bemessung in kVA)" },
-  gB:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gB - Bergbauanlagen" },
-  gPV: { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gPV - Photovoltaik (DC)", dc:true },
-  gN:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gN - Nordamerikanische Bemessungswerte" },
-  aN:  { ueberlastschutz:false, kurzschlussschutz:true,  bemessung:"A",   label:"aN - Nordamerikanische Bemessungswerte (Teilbereich)" },
-  gD:  { ueberlastschutz:true,  kurzschlussschutz:true,  bemessung:"A",   label:"gD - Nordamerikanisch, time delay" }
 };
 
 // ---- Anlagentopologie: Baumstruktur Einspeisung -> Hauptverteilung(en) -> Unterverteilung(en)/Endstromkreise

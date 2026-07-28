@@ -246,7 +246,8 @@ const CHANGELOG = [
   { v: "1.5.0", datum: "2026-07-27", text: "Prüfprotokoll (Druck/PDF-Export) grundlegend überarbeitet: erscheint jetzt als eigenständiges Dokument mit Briefkopf (Firmenlogo, Titel, Anlagendaten) statt als Ausdruck der gesamten Bearbeitungsoberfläche. Eingaben werden je Netzeinspeisungs-Modus sauber tabellarisch dargestellt statt als Rohdaten-Dump. Die Anlagentopologie wird als Diagramm eingebettet, die Bewertungsübersicht zeigt jetzt tatsächlich die berechneten Ergebnisse aller sechs Prüfungen je Knoten (zuvor nur ein Verweis auf den Bildschirmbereich), eine Tabelle der verwendeten Sicherungen mit Quelle/Datenstand sowie das Zeit-Strom-Kennliniendiagramm als Bild sind neu hinzugekommen." },
   { v: "1.6.0", datum: "2026-07-27", text: "Alle Hauptabschnitte (1-7) sind jetzt einzeln auf- und zuklappbar (Klick/Tipp auf die Überschrift) -- praktisch auf kleinen Bildschirmen, um nur die gerade benötigten Bereiche einzublenden. Der Auf-/Zu-Zustand jedes Abschnitts wird gemerkt (localStorage). Diagramm und Anlagentopologie zeichnen sich beim Wiederaufklappen automatisch neu." },
   { v: "1.7.0", datum: "2026-07-28", text: "Sicherungsbibliothek in eine eigene Seite (sicherungsbibliothek.html) ausgelagert, über ein neues Menü in der Kopfzeile erreichbar. Rechner und Bibliothek teilen sich denselben gespeicherten Datenbestand (localStorage) -- angelegte/importierte Sicherungen stehen unmittelbar bei der Sicherungszuordnung in der Anlagentopologie und im Einfachen Modus zur Verfügung. Stylesheet (styles.css) und gemeinsam genutzte Logik (shared.js: Glossar, Info-Popover, Sicherungsdatensatz-Basisfunktionen) wurden dafür in eigene Dateien ausgelagert." },
-  { v: "1.8.0", datum: "2026-07-28", text: "Kopfzeilen-Menü durch ein seitliches, dreistufig zusammenklappbares Hauptmenü ersetzt (nur Menüzeichen / nur Icons / Icons mit Beschriftung, per Klick auf den Umschalter durchschaltbar, Zustand gemerkt und seitenübergreifend geteilt). Rechtliche Hinweise, Glossar und Debug/Testsuite sind jetzt über Buttons am Seitenende (Fußzeile) erreichbar, die zugehörigen Panels (Glossar, Debug) erscheinen dort ebenfalls statt am Seitenanfang." }
+  { v: "1.8.0", datum: "2026-07-28", text: "Kopfzeilen-Menü durch ein seitliches, dreistufig zusammenklappbares Hauptmenü ersetzt (nur Menüzeichen / nur Icons / Icons mit Beschriftung, per Klick auf den Umschalter durchschaltbar, Zustand gemerkt und seitenübergreifend geteilt). Rechtliche Hinweise, Glossar und Debug/Testsuite sind jetzt über Buttons am Seitenende (Fußzeile) erreichbar, die zugehörigen Panels (Glossar, Debug) erscheinen dort ebenfalls statt am Seitenanfang." },
+  { v: "1.9.0", datum: "2026-07-28", text: "Optischer Refresh: deutlich hellerer Hintergrund, weichere/größere Rundungen (Panels, Buttons, Eingabefelder), dezente Schatten statt harter Kanten sowie flüssige Übergänge bei Hover/Fokus. Kräftiges Blau als Akzentfarbe durch zurückhaltende Graustufen ersetzt (Kopf-/Menüleiste, Buttons, Diagrammfarben); Ampel-Bewertungsfarben (bestanden/nicht bestanden/Warnung) bleiben aus Sicherheitsgründen erhalten." }
 ];
 
 /* =========================================================================
@@ -983,7 +984,7 @@ function svgEl(tag, attrs){
 
 // Kachelgröße und Raster für die frei verschiebbare Anlagentopologie ("Einpolplan"-artig).
 const TILE_W = 92, TILE_H = 40, TILE_GAP_X = 22, TILE_GAP_Y = 46, TILE_MARGIN = 24;
-const KNOTEN_FARBEN = { einspeisung:"#607d8b", hauptverteilung:"#0a5fb4", unterverteilung:"#00897b", endstromkreis:"#43a047" };
+const KNOTEN_FARBEN = { einspeisung:"#78828c", hauptverteilung:"#5b6470", unterverteilung:"#5c8a86", endstromkreis:"#5a9c6a" };
 const KNOTEN_KUERZEL = { einspeisung:"NETZ", hauptverteilung:"HV", unterverteilung:"UV", endstromkreis:"EK" };
 
 // Automatische Baum-Anordnung (nur als Startpunkt/Rücksetzoption) -- liefert Pixelpositionen.
@@ -1579,7 +1580,7 @@ function drawChart(){
   const erg = topo ? (topo.flatList.find(e=>e.id===selectedId) || topo.flatList[0]) : null;
   if(erg){
     const fuse = fuseById(erg.node.fuseId);
-    if(fuse) plotKennlinie(fuse.kennlinie, "#0a5fb4");
+    if(fuse) plotKennlinie(fuse.kennlinie, "#5b6470");
 
     const vorFuse = erg.parentNode ? fuseById(erg.parentNode.fuseId) : null;
     if(vorFuse) plotKennlinie(vorFuse.kennlinie, "#b47a00");
@@ -1594,7 +1595,7 @@ function drawChart(){
   }
 
   const cmp = document.getElementById("chartCompare");
-  const palette = ["#9c27b0","#00897b","#e64a19","#3949ab","#c0ca33"];
+  const palette = ["#8e5ba6","#4f9a92","#c07a4f","#6b74b8","#9aa34f"];
   [...cmp.selectedOptions].forEach((opt,i)=>{
     const f = fuseById(opt.value);
     if(f) plotKennlinie(f.kennlinie, palette[i%palette.length]);

@@ -9,7 +9,7 @@
    jeweils anderen Seite gepflegte Daten (Anlagentopologie bzw. Sicherungsbibliothek) erhalten
    bleiben.
    ============================================================================================ */
-const APP_VERSION = "1.8.0";
+const APP_VERSION = "1.9.0";
 const STORAGE_KEY = "nhrechner_state_v1";
 
 function el(tag, attrs, children){

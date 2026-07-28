@@ -133,7 +133,7 @@
   </div>
 </details>
 
-<details class="panel span2 mode-experte" open id="sec-topologie">
+<details class="panel span2" open id="sec-topologie">
   <summary><h2>3. Anlagentopologie</h2></summary>
   <p class="hinweis">Baumstruktur der Anlage: Netzeinspeisung → Hauptverteilung(en) → Unterverteilung(en)/Endstromkreise
   (beliebig verschachtelbar), z. B. Netz/Trafo → HAK → Hauptleitung → HV → Steigleitung → UV → Endstromkreis (Abschnitt 5.3).
@@ -252,7 +252,8 @@ const CHANGELOG = [
   { v: "1.7.0", datum: "2026-07-28", text: "Sicherungsbibliothek in eine eigene Seite (sicherungsbibliothek.html) ausgelagert, über ein neues Menü in der Kopfzeile erreichbar. Rechner und Bibliothek teilen sich denselben gespeicherten Datenbestand (localStorage) -- angelegte/importierte Sicherungen stehen unmittelbar bei der Sicherungszuordnung in der Anlagentopologie und im Einfachen Modus zur Verfügung. Stylesheet (styles.css) und gemeinsam genutzte Logik (shared.js: Glossar, Info-Popover, Sicherungsdatensatz-Basisfunktionen) wurden dafür in eigene Dateien ausgelagert." },
   { v: "1.8.0", datum: "2026-07-28", text: "Kopfzeilen-Menü durch ein seitliches, dreistufig zusammenklappbares Hauptmenü ersetzt (nur Menüzeichen / nur Icons / Icons mit Beschriftung, per Klick auf den Umschalter durchschaltbar, Zustand gemerkt und seitenübergreifend geteilt). Rechtliche Hinweise, Glossar und Debug/Testsuite sind jetzt über Buttons am Seitenende (Fußzeile) erreichbar, die zugehörigen Panels (Glossar, Debug) erscheinen dort ebenfalls statt am Seitenanfang." },
   { v: "1.9.0", datum: "2026-07-28", text: "Optischer Refresh: deutlich hellerer Hintergrund, weichere/größere Rundungen (Panels, Buttons, Eingabefelder), dezente Schatten statt harter Kanten sowie flüssige Übergänge bei Hover/Fokus. Kräftiges Blau als Akzentfarbe durch zurückhaltende Graustufen ersetzt (Kopf-/Menüleiste, Buttons, Diagrammfarben); Ampel-Bewertungsfarben (bestanden/nicht bestanden/Warnung) bleiben aus Sicherheitsgründen erhalten." },
-  { v: "1.9.1", datum: "2026-07-28", text: "Die bunten Emoji-Symbole im Hauptmenü (Rechner/Sicherungsbibliothek) durch einfache, einfarbige Linien-Icons (Taschenrechner, Buch) ersetzt -- eindeutig erkennbar auch in der reinen Icon-Stufe des Menüs ohne Textbeschriftung." }
+  { v: "1.9.1", datum: "2026-07-28", text: "Die bunten Emoji-Symbole im Hauptmenü (Rechner/Sicherungsbibliothek) durch einfache, einfarbige Linien-Icons (Taschenrechner, Buch) ersetzt -- eindeutig erkennbar auch in der reinen Icon-Stufe des Menüs ohne Textbeschriftung." },
+  { v: "1.9.2", datum: "2026-07-28", text: "Abschnitt „3. Anlagentopologie“ (Diagramm, Leitungsdaten, Sicherungszuordnung je Knoten) ist jetzt auch im Einfachen Modus sichtbar und nutzbar, nicht mehr nur im Experten-Modus. Ergebnisse, Kennlinien-Diagramm und Protokoll (vollständige Bewertung nach allen sechs Prüfungen) bleiben weiterhin dem Experten-Modus vorbehalten." }
 ];
 
 /* =========================================================================

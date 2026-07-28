@@ -29,8 +29,12 @@
 <nav id="sideMenu" aria-label="Hauptmenü">
   <button type="button" id="btnMenuToggle" class="menu-toggle" aria-label="Menü ein-/ausklappen">☰</button>
   <div class="menu-links">
-    <a href="index.html" class="menu-link active"><span class="menu-icon">🧮</span><span class="menu-label">Rechner</span></a>
-    <a href="sicherungsbibliothek.html" class="menu-link"><span class="menu-icon">📚</span><span class="menu-label">Sicherungsbibliothek</span></a>
+    <a href="index.html" class="menu-link active"><span class="menu-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="3"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11.01"/><line x1="12" y1="11" x2="12" y2="11.01"/><line x1="16" y1="11" x2="16" y2="11.01"/><line x1="8" y1="15" x2="8" y2="15.01"/><line x1="12" y1="15" x2="12" y2="15.01"/><line x1="16" y1="15" x2="16" y2="15.01"/><line x1="8" y1="19" x2="8" y2="19.01"/><line x1="12" y1="19" x2="12" y2="19.01"/><line x1="16" y1="19" x2="16" y2="19.01"/></svg>
+    </span><span class="menu-label">Rechner</span></a>
+    <a href="sicherungsbibliothek.html" class="menu-link"><span class="menu-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22"/><path d="M4 4.5v15A2.5 2.5 0 0 0 6.5 22H20"/></svg>
+    </span><span class="menu-label">Sicherungsbibliothek</span></a>
   </div>
 </nav>
 <div id="menuBackdrop"></div>
@@ -247,7 +251,8 @@ const CHANGELOG = [
   { v: "1.6.0", datum: "2026-07-27", text: "Alle Hauptabschnitte (1-7) sind jetzt einzeln auf- und zuklappbar (Klick/Tipp auf die Überschrift) -- praktisch auf kleinen Bildschirmen, um nur die gerade benötigten Bereiche einzublenden. Der Auf-/Zu-Zustand jedes Abschnitts wird gemerkt (localStorage). Diagramm und Anlagentopologie zeichnen sich beim Wiederaufklappen automatisch neu." },
   { v: "1.7.0", datum: "2026-07-28", text: "Sicherungsbibliothek in eine eigene Seite (sicherungsbibliothek.html) ausgelagert, über ein neues Menü in der Kopfzeile erreichbar. Rechner und Bibliothek teilen sich denselben gespeicherten Datenbestand (localStorage) -- angelegte/importierte Sicherungen stehen unmittelbar bei der Sicherungszuordnung in der Anlagentopologie und im Einfachen Modus zur Verfügung. Stylesheet (styles.css) und gemeinsam genutzte Logik (shared.js: Glossar, Info-Popover, Sicherungsdatensatz-Basisfunktionen) wurden dafür in eigene Dateien ausgelagert." },
   { v: "1.8.0", datum: "2026-07-28", text: "Kopfzeilen-Menü durch ein seitliches, dreistufig zusammenklappbares Hauptmenü ersetzt (nur Menüzeichen / nur Icons / Icons mit Beschriftung, per Klick auf den Umschalter durchschaltbar, Zustand gemerkt und seitenübergreifend geteilt). Rechtliche Hinweise, Glossar und Debug/Testsuite sind jetzt über Buttons am Seitenende (Fußzeile) erreichbar, die zugehörigen Panels (Glossar, Debug) erscheinen dort ebenfalls statt am Seitenanfang." },
-  { v: "1.9.0", datum: "2026-07-28", text: "Optischer Refresh: deutlich hellerer Hintergrund, weichere/größere Rundungen (Panels, Buttons, Eingabefelder), dezente Schatten statt harter Kanten sowie flüssige Übergänge bei Hover/Fokus. Kräftiges Blau als Akzentfarbe durch zurückhaltende Graustufen ersetzt (Kopf-/Menüleiste, Buttons, Diagrammfarben); Ampel-Bewertungsfarben (bestanden/nicht bestanden/Warnung) bleiben aus Sicherheitsgründen erhalten." }
+  { v: "1.9.0", datum: "2026-07-28", text: "Optischer Refresh: deutlich hellerer Hintergrund, weichere/größere Rundungen (Panels, Buttons, Eingabefelder), dezente Schatten statt harter Kanten sowie flüssige Übergänge bei Hover/Fokus. Kräftiges Blau als Akzentfarbe durch zurückhaltende Graustufen ersetzt (Kopf-/Menüleiste, Buttons, Diagrammfarben); Ampel-Bewertungsfarben (bestanden/nicht bestanden/Warnung) bleiben aus Sicherheitsgründen erhalten." },
+  { v: "1.9.1", datum: "2026-07-28", text: "Die bunten Emoji-Symbole im Hauptmenü (Rechner/Sicherungsbibliothek) durch einfache, einfarbige Linien-Icons (Taschenrechner, Buch) ersetzt -- eindeutig erkennbar auch in der reinen Icon-Stufe des Menüs ohne Textbeschriftung." }
 ];
 
 /* =========================================================================

@@ -1,0 +1,235 @@
+/* ============================================================
+   NH-Kurzschlussstromrechner — Stylesheet
+   ============================================================ */
+:root{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#101418; --ink-soft:#3c454d;
+  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff; --accent-hover-bg:rgba(10,95,180,.14);
+  --ok-bg:#d6f3dc; --ok-ink:#0d5c22; --ok-line:#1e9a41;
+  --bad-bg:#fbdada; --bad-ink:#7a0e0e; --bad-line:#c62828;
+  --na-bg:#e8e8e8; --na-ink:#444; --na-line:#999;
+  --warn-bg:#fff2cc; --warn-ink:#7a5b00; --warn-line:#c99a00;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --sans: "Segoe UI", Arial, Helvetica, sans-serif;
+  --radius: 10px;
+  --tap: 44px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14181b; --panel:#1e2327; --ink:#f0f2f4; --ink-soft:#c3cad0;
+    --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f; --accent-hover-bg:rgba(77,163,255,.18);
+    --ok-bg:#123a1c; --ok-ink:#8be09e; --ok-line:#1e9a41;
+    --bad-bg:#3d1414; --bad-ink:#ff9d9d; --bad-line:#c62828;
+    --na-bg:#2a2e31; --na-ink:#b7bcc0; --na-line:#666;
+    --warn-bg:#3a2f06; --warn-ink:#ffd876; --warn-line:#c99a00;
+  }
+}
+/* Manueller Theme-Umschalter (z.B. Artifact-Hosting-Umgebung) hat Vorrang vor der OS-Einstellung. */
+:root[data-theme="dark"]{
+  --bg:#14181b; --panel:#1e2327; --ink:#f0f2f4; --ink-soft:#c3cad0;
+  --line:#3a4147; --accent:#4da3ff; --accent-ink:#06131f; --accent-hover-bg:rgba(77,163,255,.18);
+  --ok-bg:#123a1c; --ok-ink:#8be09e; --ok-line:#1e9a41;
+  --bad-bg:#3d1414; --bad-ink:#ff9d9d; --bad-line:#c62828;
+  --na-bg:#2a2e31; --na-ink:#b7bcc0; --na-line:#666;
+  --warn-bg:#3a2f06; --warn-ink:#ffd876; --warn-line:#c99a00;
+}
+:root[data-theme="light"]{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#101418; --ink-soft:#3c454d;
+  --line:#c7ced4; --accent:#0a5fb4; --accent-ink:#ffffff; --accent-hover-bg:rgba(10,95,180,.14);
+  --ok-bg:#d6f3dc; --ok-ink:#0d5c22; --ok-line:#1e9a41;
+  --bad-bg:#fbdada; --bad-ink:#7a0e0e; --bad-line:#c62828;
+  --na-bg:#e8e8e8; --na-ink:#444; --na-line:#999;
+  --warn-bg:#fff2cc; --warn-ink:#7a5b00; --warn-line:#c99a00;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--ink);
+  font-size:16px; line-height:1.4; padding-bottom:60px;
+}
+h1,h2,h3,h4{font-family:var(--sans); font-weight:700; margin:0 0 .5em 0;}
+h1{font-size:1.3rem;}
+h2{font-size:1.1rem; border-bottom:2px solid var(--line); padding-bottom:.3em;}
+h3{font-size:1rem;}
+button, select, input, textarea{font-family:inherit; font-size:1rem;}
+button{
+  min-height:var(--tap); min-width:var(--tap); padding:.5em 1em;
+  border-radius:var(--radius); border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); cursor:pointer; touch-action:manipulation;
+}
+button.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600;}
+button.danger{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+button:active{transform:translateY(1px);}
+input,select,textarea{
+  min-height:var(--tap); padding:.4em .6em; border-radius:8px; border:1px solid var(--line);
+  background:var(--panel); color:var(--ink); width:100%;
+}
+label{display:flex; align-items:center; gap:.35em; font-size:.85rem; color:var(--ink-soft); margin-bottom:.2em; font-weight:600;}
+button.infobtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; min-height:22px; width:22px; height:22px; padding:0; border-radius:50%;
+  background:transparent; color:var(--accent); border:none; font-size:.85rem; font-weight:800;
+  flex:0 0 auto; line-height:1; margin-left:2px;
+}
+button.infobtn:hover, button.infobtn:focus-visible{ background:var(--accent-hover-bg); }
+.info-popover{
+  position:fixed; z-index:900; max-width:min(360px, 90vw); background:var(--panel); color:var(--ink);
+  border:1px solid var(--accent); border-radius:10px; padding:.8em 1em; box-shadow:0 6px 24px rgba(0,0,0,.3);
+  font-size:.85rem; font-weight:400;
+}
+.info-popover h4{margin:0 0 .3em 0; font-size:.9rem;}
+.info-popover .quelle{color:var(--ink-soft); font-size:.75rem; margin-top:.4em; font-style:italic;}
+.info-popover .close{position:absolute; top:.3em; right:.3em; min-width:30px; min-height:30px; border-radius:50%; padding:0;}
+#glossarPanel{display:none;}
+#glossarPanel.open{display:block;}
+#glossarSearch{margin-bottom:.7em;}
+.glossar-entry{border-bottom:1px solid var(--line); padding:.5em 0;}
+.glossar-entry h4{margin:0 0 .2em 0;}
+.glossar-entry .quelle{color:var(--ink-soft); font-size:.78rem; font-style:italic;}
+.field{margin-bottom:.7em;}
+.row{display:flex; flex-wrap:wrap; gap:.7em;}
+.row > .field{flex:1 1 160px;}
+header#topbar{
+  position:sticky; top:0; z-index:50; background:var(--accent); color:var(--accent-ink);
+  padding:.6em 1em; display:flex; justify-content:space-between; align-items:center; gap:.5em; flex-wrap:wrap;
+}
+header#topbar h1{margin:0; color:var(--accent-ink);}
+header#topbar .meta{font-size:.75rem; opacity:.9;}
+#app{max-width:1400px; margin:0 auto; padding:1em;}
+.grid2{display:grid; grid-template-columns:1fr; gap:1em;}
+@media(min-width:980px){ .grid2{grid-template-columns:1fr 1fr;} .grid2 > .span2{grid-column:1/-1;} }
+section.panel, details.panel{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:1em; margin-bottom:1em;
+}
+/* Auf-/zuklappbare Abschnitte (details/summary): eigener Chevron statt Browser-Standardmarker,
+   h2 bleibt in der summary-Zeile klickbar und behält seinen Abstand nach unten nur im geöffneten Zustand. */
+details.panel > summary{
+  list-style:none; cursor:pointer; min-height:var(--tap); display:flex; align-items:center;
+  margin:-1em -1em 0 -1em; padding:1em; border-radius:var(--radius);
+}
+details.panel > summary::-webkit-details-marker{display:none;}
+details.panel > summary::before{
+  content:"▸"; display:inline-block; margin-right:.5em; color:var(--accent); font-size:.85em;
+  transition:transform .15s ease; flex:0 0 auto;
+}
+details.panel[open] > summary::before{ transform:rotate(90deg); }
+details.panel > summary h2{ margin:0; border-bottom:none; padding-bottom:0; }
+details.panel[open] > summary{ margin-bottom:1em; border-bottom:2px solid var(--line); padding-bottom:.8em; }
+details.panel > summary:hover{ background:var(--accent-hover-bg); }
+details.panel > summary:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+.card{border:1px solid var(--line); border-radius:var(--radius); padding:.8em; margin-bottom:.6em; background:var(--bg);}
+.card-head{display:flex; justify-content:space-between; align-items:center; gap:.5em; margin-bottom:.4em;}
+.tag{display:inline-block; padding:.15em .5em; border-radius:6px; font-size:.75rem; font-weight:700; border:1px solid var(--line);}
+.tag.ok{background:var(--ok-bg); color:var(--ok-ink); border-color:var(--ok-line);}
+.tag.bad{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+.tag.na{background:var(--na-bg); color:var(--na-ink); border-color:var(--na-line);}
+.tag.warn{background:var(--warn-bg); color:var(--warn-ink); border-color:var(--warn-line);}
+.ampel{border-radius:var(--radius); border:2px solid; padding:.7em; margin-bottom:.5em;}
+.ampel.ok{background:var(--ok-bg); color:var(--ok-ink); border-color:var(--ok-line);}
+.ampel.bad{background:var(--bad-bg); color:var(--bad-ink); border-color:var(--bad-line);}
+.ampel.na{background:var(--na-bg); color:var(--na-ink); border-color:var(--na-line);}
+.ampel .titlerow{display:flex; justify-content:space-between; font-weight:700;}
+.kennzahl{display:inline-block; min-width:9em; margin:.3em .6em .3em 0;}
+.kennzahl .val{font-size:1.5rem; font-weight:800; display:block;}
+.kennzahl .lbl{font-size:.75rem; color:var(--ink-soft);}
+details.rechenweg{margin-top:.4em; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.4em .7em;}
+details.rechenweg summary{cursor:pointer; font-weight:600; min-height:var(--tap); display:flex; align-items:center;}
+details.rechenweg pre{white-space:pre-wrap; font-family:var(--mono); font-size:.82rem; margin:.5em 0 0 0;}
+.warnbox{background:var(--warn-bg); color:var(--warn-ink); border:1px solid var(--warn-line); border-radius:8px; padding:.6em .8em; margin-bottom:.5em; font-weight:600;}
+.hinweis{font-size:.8rem; color:var(--ink-soft); font-style:italic;}
+canvas#chart{width:100%; height:420px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); touch-action:pinch-zoom;}
+.modebar{display:flex; gap:.4em; flex-wrap:wrap; margin-bottom:.7em;}
+.modebar button.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+#legalOverlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1000;
+  display:flex; align-items:center; justify-content:center; padding:1em;
+}
+#legalOverlay .box{background:var(--panel); color:var(--ink); max-width:640px; border-radius:var(--radius); padding:1.4em; max-height:90vh; overflow:auto;}
+table{border-collapse:collapse; width:100%; font-size:.9rem;}
+table th, table td{border:1px solid var(--line); padding:.35em .5em; text-align:left;}
+table th{background:var(--bg);}
+#protoHead, #protoEingaben, #protoErgebnisse, #protoBewertung, #testResults{overflow-x:auto;}
+#protoHead table, #protoErgebnisse table, #testResults table{min-width:520px;}
+.small{font-size:.8rem;}
+.pill-btn{border-radius:999px;}
+.flexend{display:flex; justify-content:flex-end; gap:.5em;}
+#debugPanel{display:none;}
+#debugPanel.open{display:block;}
+textarea.jsonbox{min-height:200px; font-family:var(--mono); font-size:.8rem;}
+.badge-src{font-size:.7rem; color:var(--ink-soft); display:block; margin-top:.15em;}
+.dragHandle{cursor:grab; user-select:none; font-size:1.3rem; padding:0 .3em;}
+.pv-only{display:none;}
+.ac-only{display:block;}
+#topoDiagramWrap{overflow:auto; max-height:65vh; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:.5em;}
+#topoDiagram{display:block;}
+/* .topo-svg statt #topoDiagram, damit dieselbe Gestaltung auch für den geklonten Diagramm-
+   Schnappschuss im Prüfprotokoll gilt (dort ohne id, um doppelte IDs im Dokument zu vermeiden). */
+.topo-svg .knoten-tile{touch-action:none; cursor:grab;}
+.topo-svg .knoten-tile.dragging{cursor:grabbing;}
+.topo-svg .kanten-label{font-size:8px; fill:var(--ink-soft);}
+.topo-svg .kanten-label-bg{fill:var(--bg); fill-opacity:0.95;}
+.modeswitch{display:flex; gap:.3em;}
+.modeswitch button{
+  background:transparent; border:1px solid rgba(255,255,255,.6); color:inherit; min-height:36px; font-weight:600;
+}
+.modeswitch button.active{background:rgba(255,255,255,.92); color:var(--accent);}
+body.mode-einfach .mode-experte{display:none !important;}
+body.mode-experte .mode-einfach{display:none !important;}
+.grosstreffer{font-size:.78rem; color:var(--ink-soft); margin:.3em 0;}
+.einfach-ergebnis-card{border:2px solid; border-radius:var(--radius); padding:.7em .9em; margin-bottom:.6em;}
+.einfach-ergebnis-card.trip{border-color:var(--bad-line); background:var(--bad-bg); color:var(--bad-ink);}
+.einfach-ergebnis-card.notrip{border-color:var(--ok-line); background:var(--ok-bg); color:var(--ok-ink);}
+.einfach-ergebnis-card.unklar{border-color:var(--na-line); background:var(--na-bg); color:var(--na-ink);}
+.einfach-ergebnis-card .titlerow{display:flex; justify-content:space-between; font-weight:700; gap:.5em; flex-wrap:wrap;}
+footer#appfooter{max-width:1400px; margin:0 auto; padding:1em; font-size:.75rem; color:var(--ink-soft);}
+
+/* Druckprotokoll: auf dem Bildschirm unsichtbar, erscheint nur beim Drucken/PDF-Export
+   (Abschnitt "Protokoll & Datenaustausch"). Bewusst getrennt vom Bearbeitungsbereich, damit
+   der Ausdruck wie ein eigenständiges, sauberes Dokument aussieht statt wie ein Seitenauszug. */
+#protokollDruck{display:none;}
+.proto-briefkopf{display:flex; align-items:center; gap:1em; margin-bottom:1em; padding-bottom:.8em; border-bottom:3px solid var(--accent);}
+.proto-briefkopf img{max-height:64px; max-width:220px; object-fit:contain;}
+.proto-briefkopf .proto-titel{font-size:1.4rem; font-weight:800; margin:0;}
+.proto-briefkopf .proto-untertitel{font-size:.85rem; color:var(--ink-soft);}
+#protokollDruck h3{margin-top:1.4em; border-bottom:1px solid var(--line); padding-bottom:.2em;}
+.proto-knoten-block{border:1px solid var(--line); border-radius:8px; padding:.6em .9em; margin-bottom:.7em;}
+.proto-knoten-block h4{margin:0 0 .4em 0;}
+.proto-ampel-row{display:flex; justify-content:space-between; gap:1em; border-left:4px solid var(--na-line); padding:.15em .6em; margin-bottom:.25em; font-size:.85rem;}
+.proto-ampel-row.ok{border-left-color:var(--ok-line);}
+.proto-ampel-row.bad{border-left-color:var(--bad-line); font-weight:700;}
+.proto-ampel-row .proto-status{white-space:nowrap; font-weight:700;}
+.proto-svg-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px; padding:.5em; background:var(--bg);}
+.proto-svg-wrap svg{max-width:100%; height:auto; display:block;}
+.proto-chart-img{max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px;}
+.proto-disclaimer{font-size:.8rem; font-style:italic; margin-top:1.5em;}
+.proto-unterschrift{margin-top:3em;}
+.proto-fusszeile{font-size:.75rem; color:var(--ink-soft); margin-top:2em; border-top:1px solid var(--line); padding-top:.5em;}
+
+@media print{
+  header#topbar, footer#appfooter, #arbeitsbereich, #legalOverlay{display:none !important;}
+  body{background:#fff; color:#000; padding:0; font-size:10.5pt;}
+  #protokollDruck{display:block !important; max-width:none; margin:0; padding:0; border:none; box-shadow:none; break-inside:auto;}
+  a{color:#000; text-decoration:none;}
+  @page{size:A4; margin:16mm 14mm;}
+  #protokollDruck table{font-size:9.5pt;}
+  #protokollDruck table th, #protokollDruck table td{border:1px solid #000; padding:.3em .5em;}
+  .proto-briefkopf{border-bottom-color:#000;}
+  .proto-knoten-block{border-color:#000; break-inside:avoid;}
+  .proto-ampel-row{border-left-color:#999;}
+  .proto-ampel-row.ok{border-left-color:#000;}
+  .proto-ampel-row.bad{border-left-color:#000; border-left-width:6px;}
+  .proto-svg-wrap, .proto-chart-img{border-color:#000; background:#fff;}
+  /* Diagramm im Protokoll immer hell darstellen, unabhängig vom aktuell aktiven Bildschirm-Theme. */
+  .proto-svg-wrap .kanten-label-bg{fill:#fff;}
+  .proto-svg-wrap .kanten-label{fill:#333;}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+}
+
+/* ---- Menü oben (Seitenwechsel Rechner / Sicherungsbibliothek) ---- */
+nav.topnav{display:flex; gap:.3em; flex-wrap:wrap;}
+nav.topnav a{
+  display:inline-flex; align-items:center; min-height:36px; padding:.4em .9em;
+  border-radius:var(--radius); border:1px solid rgba(255,255,255,.6); color:inherit;
+  text-decoration:none; font-weight:600; font-size:.9rem; white-space:nowrap;
+}
+nav.topnav a.active{background:rgba(255,255,255,.92); color:var(--accent);}

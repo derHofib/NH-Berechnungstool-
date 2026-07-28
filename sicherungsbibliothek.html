@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sicherungsbibliothek – NH-Kurzschlussstromrechner</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header id="topbar">
+  <h1>Sicherungsbibliothek</h1>
+  <nav class="topnav">
+    <a href="index.html">🧮 Rechner</a>
+    <a href="sicherungsbibliothek.html" class="active">📚 Sicherungsbibliothek</a>
+  </nav>
+  <div class="meta">Version <span id="verLabel"></span> · <button id="btnGlossarToggle" style="background:transparent;border:1px solid rgba(255,255,255,.6);color:inherit;min-height:32px;">❓ Glossar</button></div>
+</header>
+
+<div id="app">
+
+<div id="arbeitsbereich">
+
+<section class="panel" id="glossarPanel">
+  <h2>Glossar / Wiki der Datenpunkte</h2>
+  <p class="hinweis">Erklärt jedes Feld eines Sicherungsdatensatzes (JSON) inklusive Normbezug -- der JSON-Editor
+  kann keine einzelnen ⓘ-Infofelder je Zeile anzeigen, daher hier als durchsuchbare Gesamtübersicht.</p>
+  <input type="text" id="glossarSearch" placeholder="Suche im Glossar (z. B. „kennlinie“, „Baugröße“, „gTr“) …">
+  <div id="glossarList"></div>
+</section>
+
+<section class="panel">
+  <h2>Sicherungsbibliothek</h2>
+  <p class="hinweis">Kennliniendaten sind herstellerspezifisch und urheberrechtlich geschützt — es sind
+  <strong>keine</strong> Werksdaten vorbefüllt. Bitte eigene Datensätze anlegen oder als JSON importieren
+  (Struktur siehe Lastenheft Abschnitt 4.4). Alle hier gepflegten Sicherungen stehen im
+  <a href="index.html">🧮 Rechner</a> sofort für die Sicherungszuordnung je Leitung und im Einfachen Modus
+  (Sicherungs-Schnellcheck) zur Verfügung -- beide Seiten teilen sich denselben gespeicherten Datenbestand.</p>
+  <div class="row">
+    <div class="field"><label>JSON-Import Sicherungsbibliothek</label><input type="file" id="fuseImportFile" accept="application/json"></div>
+    <div class="field"><label>&nbsp;</label><button id="btnExportFuses">Bibliothek exportieren (JSON)</button></div>
+    <div class="field"><label>&nbsp;</label><button id="btnNewFuseTemplate">Neuen Sicherungsdatensatz anlegen</button></div>
+    <div class="field"><label>&nbsp; <button type="button" class="infobtn" data-info="vorlagendatenbank">ⓘ</button></label><button id="btnLoadVorlagenDB">+ Große Vorlagen-Datenbank laden</button></div>
+  </div>
+  <div id="fuseEditorHost"></div>
+  <h3>Bibliothek (<span id="fuseCount">0</span> Datensätze)</h3>
+  <input type="text" id="fuseFilter" placeholder="Bibliothek filtern (Hersteller, Typ, Klasse, Baugröße, In) …">
+  <div id="fuseList"></div>
+</section>
+
+</div>
+
+</div>
+
+<footer id="appfooter">
+  NH-Kurzschlussstromrechner · Sicherungsbibliothek · Programmversion <span id="verLabel2"></span>
+</footer>
+
+<script src="shared.js"></script>
+<script>
+"use strict";
+
+/* ============================================================================================
+   SICHERUNGSBIBLIOTHEK (eigene Seite)
+   Eigenständige Seite für Anlage/Import/Export/Filter der Sicherungsdatensätze. Teilt sich den
+   localStorage-Schlüssel STORAGE_KEY (shared.js) mit dem Rechner (index.html): der komplette
+   gespeicherte Zustand wird geladen, nur STATE.fuseLibrary wird hier verändert, und beim
+   Speichern wird der GESAMTE Zustand unverändert zurückgeschrieben -- damit bleiben Anlagen-
+   topologie, Kopfdaten usw. des Rechners erhalten, auch wenn nur hier auf dieser Seite gearbeitet
+   wird. renderFuseList()/showFuseEditor()/afterFuseLibraryChange() etc. kommen aus shared.js.
+   ============================================================================================ */
+
+let STATE = { fuseLibrary: [] };
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      Object.assign(STATE, parsed);
+    }
+  }catch(e){ console.warn("State konnte nicht geladen werden", e); }
+  if(!Array.isArray(STATE.fuseLibrary)) STATE.fuseLibrary = [];
+  STATE.fuseLibrary.forEach(ensureFuseId);
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }catch(e){}
+}
+
+document.getElementById("fuseFilter").addEventListener("input", renderFuseList);
+
+document.getElementById("btnNewFuseTemplate").addEventListener("click", ()=>{
+  showFuseEditor(neueSicherungsvorlage());
+});
+document.getElementById("btnLoadVorlagenDB").addEventListener("click", ()=>{
+  const vorlagen = erzeugeSicherungsVorlagenDatenbank();
+  if(!confirm(`Es werden ${vorlagen.length} leere Sicherungs-Vorlagen (verschiedene Baugrößen/Klassen/Bemessungsströme, ohne Kennlinien- oder Herstellerdaten) zur Bibliothek hinzugefügt. Diese müssen anschließend selbst mit echten Datenblattwerten befüllt werden. Fortfahren?`)) return;
+  vorlagen.forEach(ensureFuseId);
+  STATE.fuseLibrary.push(...vorlagen);
+  afterFuseLibraryChange();
+});
+document.getElementById("btnExportFuses").addEventListener("click", ()=>{
+  downloadJSON(STATE.fuseLibrary, "sicherungsbibliothek.json");
+});
+document.getElementById("fuseImportFile").addEventListener("change", (ev)=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      const arr = (Array.isArray(data) ? data : [data]).map(ensureFuseId);
+      STATE.fuseLibrary.push(...arr);
+      afterFuseLibraryChange();
+    }catch(e){ alert("Import fehlgeschlagen: "+e.message); }
+  };
+  reader.readAsText(file);
+});
+
+/* ---- Glossar-Panel ---- */
+document.getElementById("glossarSearch").addEventListener("input", (ev)=> renderGlossarList(ev.target.value));
+document.getElementById("btnGlossarToggle").addEventListener("click", ()=>{
+  const panel = document.getElementById("glossarPanel");
+  panel.classList.toggle("open");
+  if(panel.classList.contains("open")) renderGlossarList(document.getElementById("glossarSearch").value);
+});
+
+function init(){
+  loadState();
+  document.getElementById("verLabel").textContent = APP_VERSION;
+  document.getElementById("verLabel2").textContent = APP_VERSION;
+  renderGlossarList("");
+  renderFuseList();
+}
+init();
+</script>
+</body>
+</html>
